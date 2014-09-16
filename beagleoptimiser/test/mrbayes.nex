@@ -1,0 +1,22 @@
+#NEXUS
+
+BEGIN DATA;
+	DIMENSIONS  NTAX=4 NCHAR=16;
+	FORMAT DATATYPE = DNA GAP = - MISSING = ?;
+	MATRIX
+    Species1    atgcctagctagctcg
+    Species2    atgcctagctagctcg
+    Species3    atgcctagctagctcg
+    Species4    atgcctagctagctcg
+;
+END;
+
+begin mrbayes;
+	set autoclose=yes nowarn=yes;
+	lset nst=2 rates=gamma;
+	unlink statefreq=(all) revmat=(all) shape=(all); 
+	prset applyto=(all) ratepr=variable;
+	mcmcp ngen= 100 relburnin=yes burninfrac=0.25  printfreq=25  samplefreq=25 nchains=4 savebrlens=yes;
+	mcmc;
+	sumt;
+end;

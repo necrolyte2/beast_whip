@@ -6,14 +6,25 @@ shortest analysis time of that file. You can find out
 more about the program in the open laboratory notebook
 at http://matstopel.se/notebook/beagle-optimiser.
 
+# Install
 
+It is highly suggested that you install into a virtualenv environment
+http://virtualenv.readthedocs.org/en/latest/virtualenv.html#installation
+
+```
+cd beagle_optimiser
+wget https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.6.tar.gz#md5=f61cdd983d2c4e6aeabb70b1060d6f49 -O- | tar xzf -
+python virtualenv-1.11.6/virtualenv.py bo
+. bo/bin/activate
+python setup.py install
+```
 
 # The program has the following functions:
 
-mats@Slartibartfasts:~/project/beagle/test$ ./beagle_optimiser_0.9 -h
+$ ./beagle_optimiser -h
 
 Usage: 
-beagle_optimiser_0.9.2 [-r] [-q] [-d] [--nogpu] [-f] FILE [-t] NAME [-n] N -i [file1 file2 ..]
+beagle_optimiser [-r] [-q] [-d] [--nogpu] [-f] FILE [-t] NAME [-n] N -i [file1 file2 ..]
 
 Options:
 --version               Show program's version number and exit.

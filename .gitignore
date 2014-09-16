@@ -1,0 +1,6 @@
+bo
+*.pyc
+*.swp
+*.egg*
+*.zip
+virtualenv*
