@@ -26,7 +26,6 @@ def run_beast_options( xmlfile, stream=sys.stdout, excludelist=[] ):
     '''
     options = get_available_beagle_options()
     runs = []
-    print excludelist
     for option in options:
         # Skip the exluded options
         skip=False

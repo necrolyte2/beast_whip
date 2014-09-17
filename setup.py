@@ -10,7 +10,7 @@ setup(
     packages = find_packages(),
     scripts = glob('bin/*'),
     install_requires = [
-        'argparse',
+        'argparse', # For python 2.6 compatibility
         'mock',
         'nose'
     ]
