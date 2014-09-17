@@ -421,6 +421,27 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir):
         from beagleoptimiser.beagleoptimiser import run_beast_options
         return run_beast_options( *args, **kwargs )
 
+    @attr('current')
+    def test_excludelist_excludes_options( self ):
+        with contextlib.nested(
+                patch('beagleoptimiser.beagleoptimiser.get_available_beagle_options'),
+                patch('beagleoptimiser.beagleoptimiser.estimate_beast_runtime'),
+            ) as (p1, p2):
+            times = [random.random() for i in range(8)]
+            p1.return_value = self.avail_options
+            p2.side_effect = times
+            stringstream = StringIO()
+
+            self._C(
+                self.beastfiles[0],
+                stream=stringstream,
+                excludelist=['-beagle_GPU','-beagle_CPU -beagle_instances']
+            )
+
+            output = stringstream.getvalue()
+            ok_( '-beagle_GPU -beagle_instances 2' not in output )
+            ok_( '-beagle_CPU -beagle_instances' not in output )
+
     def test_sends_to_correct_output_stream( self ):
         with contextlib.nested(
                 patch('beagleoptimiser.beagleoptimiser.get_available_beagle_options'),

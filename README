@@ -11,6 +11,7 @@ at http://matstopel.se/notebook/beagle-optimiser.
 It is highly suggested that you install into a virtualenv environment
 http://virtualenv.readthedocs.org/en/latest/virtualenv.html#installation
 
+# Setup virtualenv
 ```
 cd beagle_optimiser
 wget https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.6.tar.gz#md5=f61cdd983d2c4e6aeabb70b1060d6f49 -O- | tar xzf -
@@ -19,61 +20,4 @@ python virtualenv-1.11.6/virtualenv.py bo
 python setup.py install
 ```
 
-# The program has the following functions:
-
-$ ./beagle_optimiser -h
-
-Usage: 
-beagle_optimiser [-r] [-q] [-d] [--nogpu] [-f] FILE [-t] NAME [-n] N -i [file1 file2 ..]
-
-Options:
---version               Show program's version number and exit.
--h, --hele              Show this help message and exit.
--q, --quiet             Minimum or no output to STDOUT.
--r, --run               Run beast with the best speed settings immediately
-                        after the test.
--f FILE, --file=FILE    Write output to FILE [bo_output.txt].
--t NAME, --tmpdir=NAME
-                        Name of temporary directory for output files. This
-                        directory will be removed after the beagle tests are
-                        done if the --dev flag was not invoked [.bss_tmp].
--n N, --ngen=N          Chainlength for the Beast runs [10000].
---nogpu                 Do not use the "-Beagle_GPU" flag in the test.
--d, --dev               Produce more output to STDOUT and save all temporary
-                        files.
--i, --input             Followed by one or several input files.
-
-
-
 # Output from the program looks like this:
-_______________________________________
-
-File: benchmark1.xml
-Sequences: 1441
-Sites: 987
-Unique patterns: 593
-_______________________________________
-
-Beast option:         Time:
-
--beagle_SSE           199.66 seconds
--beagle_CPU           204.72 seconds
--beagle_instances 2   211.04 seconds
--beagle_instances 10  223.12 seconds
--beagle_instances 8   227.52 seconds
--beagle_instances 4   233.74 seconds
--beagle_instances 12  237.6 seconds
--beagle_instances 16  245.73 seconds
--beagle_instances 14  253.28 seconds
--beagle_GPU           263.08 seconds
- Native library       386.7 seconds
--java                 389.06 seconds
- _______________________________________
-
-
-
-# TODO
-Use a random seed when the "-r" option is used.
-Make BO work with MrBayes 3.2
-Test different beagle options in combination (is that relevant?)
-

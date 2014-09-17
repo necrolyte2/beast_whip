@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import multiprocessing
 import sys
 
-def run_beast_options( xmlfile, stream=sys.stdout ):
+def run_beast_options( xmlfile, stream=sys.stdout, excludelist=[] ):
     '''
     Runs beast with a combination of available -beagle_options
     Focuses only on the following options:
@@ -26,7 +26,16 @@ def run_beast_options( xmlfile, stream=sys.stdout ):
     '''
     options = get_available_beagle_options()
     runs = []
+    print excludelist
     for option in options:
+        # Skip the exluded options
+        skip=False
+        for exclude in excludelist:
+            if exclude in option:
+                skip=True
+                break
+        if skip:
+            continue
         beast_options = {}
         for o in option.split(' ', 1):
             beast_options[o] = True

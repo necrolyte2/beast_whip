@@ -9,7 +9,8 @@ import argparse
 from beagleoptimiser.beagleoptimiser import (
     estimate_beast_runtime,
     pretty_time,
-    run_beast_options
+    run_beast_options,
+    get_available_beagle_options,
 )
 
 def main( args ):
@@ -17,30 +18,48 @@ def main( args ):
     #system_info()
     #file_format()
     for xmlfile in args.inputfiles:
-        runtimes = run_beast_options( xmlfile, open(os.devnull,'w') )
+        runtimes = run_beast_options( xmlfile, args.outputstream, args.exclude )
     for options, esthours in runtimes:
         print "{0} estimated to take {1}".format(options,pretty_time(esthours))
 
 def parse_args( args=sys.argv[1:] ):
+    avail_options = '\n'.join( get_available_beagle_options() )
     parser = argparse.ArgumentParser(
-        description='''Find optimal beagle settings for MrBayes or Beast'''
+        description='''Find optimal beagle settings for Beast''',
+        epilog='Available beagle options to be run:\n{0}'.format(avail_options),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     parser.add_argument(
-        '-t',
-        '--tmpdir',
-        dest='tmp_dir',
-        metavar='NAME',
-        default='.bss_tmp',
-        help='Name of temporary directory for output files. '
-        'This directory will be removed after the beagle tests are done if the '
-        '--dev flag was not invoked [%(default)s].'
+        '--stdout',
+        dest='outputstream',
+        default=os.devnull,
+        type=argparse.FileType('w'),
+        help='By default all of the beast output will be dumped into a black ' \
+            'hole called devnull(%(default)s). If you want to see all of the ' \
+            'beast output you can specify a path to a file or you can specify ' \
+            '/dev/stdout for all the output to be dumped to your terminal'
     )
 
     parser.add_argument(
         dest='inputfiles',
         nargs='+',
         help='One more more input .xml or .nex files'
+    )
+
+    parser.add_argument(
+        '--exclude',
+        dest='exclude',
+        default=[],
+        nargs='+',
+        help='By default a permutation of beagle_instances with each of '\
+            'beagle_CPU, beagle_GPU, beagle_SSE will be used. If you have '\
+            'many cpu/core/threads on the system this will cause an unecessary '\
+            'amount of various options to be run(aka 3 * CPU_COUNT) which could '\
+            'will likely take a very long time. You can use this option to '\
+            'exclude options. A good example that you will probably want is '\
+            '--exclude \'-beagle_instances\' which would exclude the use of '\
+            'the -beagle_instances options for everything'
     )
 
     return parser.parse_args( args )
