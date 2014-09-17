@@ -6,6 +6,8 @@ import shutil
 import subprocess
 import multiprocessing
 import random
+from StringIO import StringIO
+import contextlib
 
 from mock import Mock, patch
 from nose.tools import eq_, ok_, raises, assert_almost_equal
@@ -117,6 +119,14 @@ class TestEstimateBeastRuntime(BaseTempDir):
             r = self._C( self.beastfiles[0], 999, **{'-beagle_SSE':True} ) 
         assert_almost_equal( 0.65, r )
 
+    def test_output_goes_to_specified_location( self ):
+        sout = StringIO()
+        r = self._C( self.beastfiles[0], 999, stream=sout, **{'-beagle_SSE':True} )
+        output = sout.getvalue()
+        ok_( 'beast -overwrite -seed 999 -beagle_SSE' in output )
+        ok_( 'BEAST v' in output )
+        ok_( 'hours/billion' in output )
+
     def test_run_with_actual_beast( self ):
         r = self._C( self.beastfiles[0], 999, **{'-beagle_SSE':True} )
         ok_( r is not None )
@@ -207,9 +217,10 @@ class TestPrettyTime(object):
         r = self._C( 0.000258 )
         eq_( '00:00:00:00.928800', r )
 
+    @attr('current')
     def test_really_big_number( self ):
-        r = self._C( 256.0 )
-        eq_( '10:16:00:00.0', r )
+        r = self._C( sys.maxint )
+        eq_( 'INF', r )
 
 class BeagleOptions(object):
     def _make_resource( self, *args, **kwargs ):
@@ -304,7 +315,6 @@ class BeagleOptions(object):
             inst.append( '{0} -beagle_instances {1}'.format(baseoption, i) )
         return inst
 
-#@attr('current')
 class TestGetAvailableBeagleOptions(BeagleOptions):
     def setUp(self):
         self.resources = []
@@ -392,7 +402,6 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
             r = self._C()
             eq_( sorted(expected_options), sorted(r) )
 
-@attr('current')
 class TestRunBeastOptions(BeagleOptions, BaseTempDir):
     def setUp( self ):
         super(TestRunBeastOptions,self).setUp()
@@ -409,11 +418,25 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir):
         ]
 
     def _C( self, *args, **kwargs ):
-        from beagleoptimiser.beagleoptimiser import run_beast_option
-        return run_beast_option( *args, **kwargs )
+        from beagleoptimiser.beagleoptimiser import run_beast_options
+        return run_beast_options( *args, **kwargs )
+
+    def test_sends_to_correct_output_stream( self ):
+        with contextlib.nested(
+                patch('beagleoptimiser.beagleoptimiser.get_available_beagle_options'),
+                patch('beagleoptimiser.beagleoptimiser.estimate_beast_runtime'),
+            ) as (p1, p2):
+            times = [random.random() for i in range(8)]
+            p1.return_value = self.avail_options
+            p2.side_effect = times
+            stringstream = StringIO()
+            self._C( self.beastfiles[0], stream=stringstream )
+            output = stringstream.getvalue()
+
+            ok_( '-beagle_SSE estimate: ' in output )
+            ok_( '-beagle_SSE -beagle_instances 2 estimate: ' in output )
 
     def test_picks_correctly( self ):
-        import contextlib
         with contextlib.nested(
                 patch('beagleoptimiser.beagleoptimiser.get_available_beagle_options'),
                 patch('beagleoptimiser.beagleoptimiser.estimate_beast_runtime')
@@ -423,6 +446,23 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir):
             p2.side_effect = times
             
             r = self._C( self.beastfiles[0] )
+            expected = zip( self.avail_options, times )
+            expected.sort( key=lambda x: x[1] )
+            eq_( expected, r )
+
+    @attr('current')
+    def test_handles_bad_beast_run_exception( self ):
+        with contextlib.nested(
+                patch('beagleoptimiser.beagleoptimiser.get_available_beagle_options'),
+                patch('beagleoptimiser.beagleoptimiser.estimate_beast_runtime')
+            ) as (p1, p2):
+            times = [random.random() for i in range(8)]
+            p1.return_value = self.avail_options
+            times[4] = ValueError
+            p2.side_effect = times
+            
+            r = self._C( self.beastfiles[0] )
+            times[4] = sys.maxint
             expected = zip( self.avail_options, times )
             expected.sort( key=lambda x: x[1] )
             eq_( expected, r )

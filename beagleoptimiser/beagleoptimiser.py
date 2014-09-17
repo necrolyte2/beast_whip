@@ -7,8 +7,9 @@ from os.path import abspath
 import itertools
 from datetime import datetime, timedelta
 import multiprocessing
+import sys
 
-def run_beast_option( xmlfile ):
+def run_beast_options( xmlfile, stream=sys.stdout ):
     '''
     Runs beast with a combination of available -beagle_options
     Focuses only on the following options:
@@ -27,9 +28,19 @@ def run_beast_option( xmlfile ):
     runs = []
     for option in options:
         beast_options = {}
-        for o in option.split():
+        for o in option.split(' ', 1):
             beast_options[o] = True
-        esthours = estimate_beast_runtime( xmlfile, seed=999, **beast_options )
+        print "Running beast with {0}".format(option)
+        try:
+            esthours = estimate_beast_runtime(
+                xmlfile, seed=999, stream=stream, **beast_options
+            )
+        except ValueError as e:
+            # Just set estimated hours really high to indicate an error
+            esthours = sys.maxint
+        msg = '{0} estimate: {1}'.format(option, pretty_time(esthours))
+        stream.write( msg + '\n' )
+        print msg
         runs.append( (option, esthours) )
     runs.sort( key=lambda x: x[1] )
     return runs
@@ -72,7 +83,7 @@ def get_available_beagle_options( ):
 
     return list(options)
 
-def estimate_beast_runtime( xmlfile, seed=999, **beast_options ):
+def estimate_beast_runtime( xmlfile, seed=999, stream=sys.stdout, **beast_options ):
     '''
     Run beast and wait for the first line that has the hours/million line
     Then terminate beast and calculate how long it would take to run based 
@@ -87,16 +98,19 @@ def estimate_beast_runtime( xmlfile, seed=999, **beast_options ):
     seed - Seed to set so all runs are the same
     beast_options is a kwargs set that you can specify any beast options
     '''
-    # Convert to absolute path since we are moving to a temp directory later
     xmlfile = abspath( xmlfile )
     cmd = ['beast', '-overwrite', '-seed {0}'.format(seed)]
     cmd += kwargs_to_options( **beast_options )
     cmd += [xmlfile]
     # Create a temporary directory to work in
     tdir = tempfile.mkdtemp(prefix='beastoptimiser',suffix='run')
+    # Send the command ran to stream
+    stream.write( ' '.join(cmd) + '\n' )
     p = Popen( cmd, stdout=PIPE, stderr=PIPE, cwd=tdir )
     # Loop through beast output
     for line in p.stdout:
+        # Send all output to output stream
+        stream.write( line )
         # Parse each output line
         hours_per_million = get_hours_per_million( line )
         # First line that returns an actual result for hours/million states
@@ -107,8 +121,13 @@ def estimate_beast_runtime( xmlfile, seed=999, **beast_options ):
             break
     # Make sure we actually got what we were looking for
     if hours_per_million is None:
+        stream.write( '!!!!!!!!!!!! Beast did not exit correctly !!!!!!!!!!!!!!!!!!\n' )
+        stream.write( 'Here is the remaining output:\n' )
+        stream.write( p.stderr.read() )
+        stream.write( '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n' )
         # Ensure beast is dead
-        p.kill()
+        if p.poll() is None:
+            p.kill()
         raise ValueError( "Initial hours/million state was not found in output" )
     # Compute some numbers
     total_chains = get_chainlength( xmlfile )
@@ -126,7 +145,10 @@ def pretty_time( hours_float ):
     http://stackoverflow.com/questions/4048651/python-function-to-convert-seconds-into-minutes-hours-and-days
     '''
     # Get a time delta
-    td = timedelta( hours=hours_float )
+    try:
+        td = timedelta( hours=hours_float )
+    except OverflowError as e:
+        return 'INF'
     # From the beginning of Unix time add our time delta
     dt = datetime(1,1,1) + td
     # Time format we like
