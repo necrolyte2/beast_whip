@@ -8,16 +8,31 @@ import itertools
 from datetime import datetime, timedelta
 import multiprocessing
 
-def find_fastest_beast_option( xmlfile ):
+def run_beast_option( xmlfile ):
     '''
     Runs beast with a combination of available -beagle_options
     Focuses only on the following options:
         -beagle_CPU
         -beagle_SSE
         -beagle_GPU
-        -beagle_instances 2/4/6/8..CPU_COUNT
+
+    Basically a permutation over CPU/SSE/GPU and the instances count
+    -beagle_order at this point is left out due to the increase in run time that
+    would occur due to the extra permutations
+
+    Returns a list of tuples (options run, estimated hours) sorted by estimated hours
+        ascending
     '''
-    pass
+    options = get_available_beagle_options()
+    runs = []
+    for option in options:
+        beast_options = {}
+        for o in option.split():
+            beast_options[o] = True
+        esthours = estimate_beast_runtime( xmlfile, seed=999, **beast_options )
+        runs.append( (option, esthours) )
+    runs.sort( key=lambda x: x[1] )
+    return runs
 
 def get_available_beagle_options( ):
     '''
@@ -34,17 +49,26 @@ def get_available_beagle_options( ):
     resourcelist = sout.rstrip().partition( 'BEAGLE resources available:\n' )[2]
     resourcelist = resourcelist.split('\n\n\n')
     options = set()
+
+    instances = []
+    for i in range(2, multiprocessing.cpu_count()+1, 2):
+        instances.append( '-beagle_instances {0}'.format(i) )
+
     for resource in resourcelist:
         if 'CPU' in resource and '-beagle_SSE' not in options:
             options.add( '-beagle_CPU' )
+            for inst in instances:
+                options.add( '-beagle_CPU ' + inst )
         if 'VECTOR_SSE' in resource:
             options.add( '-beagle_SSE' )
+            for inst in instances:
+                options.add( '-beagle_SSE ' + inst )
+                options.discard( '-beagle_CPU ' + inst )
             options.discard( '-beagle_CPU' )
         if 'GPU' in resource:
             options.add( '-beagle_GPU' )
-
-    for i in range(2, multiprocessing.cpu_count()+1, 2):
-        options.add( '-beagle_instances {0}'.format(i) )
+            for inst in instances:
+                options.add( '-beagle_GPU ' + inst )
 
     return list(options)
 

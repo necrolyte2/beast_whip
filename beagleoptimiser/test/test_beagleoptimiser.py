@@ -5,6 +5,7 @@ import tempfile
 import shutil
 import subprocess
 import multiprocessing
+import random
 
 from mock import Mock, patch
 from nose.tools import eq_, ok_, raises, assert_almost_equal
@@ -297,13 +298,13 @@ class BeagleOptions(object):
         beagle_info.communicate.return_value = (str,'')
         return Mock(return_value=beagle_info)
 
-    def _expected_beagle_instances( self ):
+    def _expected_beagle_instances( self, baseoption ):
         inst = []
         for i in range(2, multiprocessing.cpu_count()+1, 2):
-            inst.append( '-beagle_instances {0}'.format(i) )
+            inst.append( '{0} -beagle_instances {1}'.format(baseoption, i) )
         return inst
 
-@attr('current')
+#@attr('current')
 class TestGetAvailableBeagleOptions(BeagleOptions):
     def setUp(self):
         self.resources = []
@@ -352,7 +353,7 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
     def test_gets_beaglesse_for_vector_sse( self ):
         expected_options = [
             '-beagle_SSE',
-        ] + self._expected_beagle_instances()
+        ] + self._expected_beagle_instances('-beagle_SSE')
         resource = self._mock_beagle_info( self.resources[0] )
         with patch('beagleoptimiser.beagleoptimiser.Popen', resource):
             r = self._C()
@@ -372,7 +373,7 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
         )
         expected_options = [
             '-beagle_GPU',
-        ] + self._expected_beagle_instances()
+        ] + self._expected_beagle_instances('-beagle_GPU')
         resource = self._mock_beagle_info( self.resources[1] )
         with patch('beagleoptimiser.beagleoptimiser.Popen', resource):
             r = self._C()
@@ -382,7 +383,8 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
         expected_options = [
             '-beagle_SSE',
             '-beagle_GPU',
-        ] + self._expected_beagle_instances()
+        ] + self._expected_beagle_instances('-beagle_SSE') \
+          + self._expected_beagle_instances('-beagle_GPU')
         resource = self._mock_beagle_info(
             self.resources[0] + self.resources[1] + self.resources[2]
         )
@@ -391,16 +393,36 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
             eq_( sorted(expected_options), sorted(r) )
 
 @attr('current')
-class TestFindFastestBeastOptions(BeagleOptions, BaseTempDir):
+class TestRunBeastOptions(BeagleOptions, BaseTempDir):
     def setUp( self ):
-        super(TestFindFastestBeastOptions,self).setUp()
+        super(TestRunBeastOptions,self).setUp()
         from beagleoptimiser.beagleoptimiser import get_available_beagle_options
-        self.avail_options = get_available_beagle_options()
+        self.avail_options = [
+            '-beagle_SSE',
+            '-beagle_SSE -beagle_instances 2',
+            '-beagle_SSE -beagle_instances 4',
+            '-beagle_SSE -beagle_instances 6',
+            '-beagle_GPU',
+            '-beagle_GPU -beagle_instances 2',
+            '-beagle_GPU -beagle_instances 4',
+            '-beagle_GPU -beagle_instances 6',
+        ]
 
     def _C( self, *args, **kwargs ):
-        from beagleoptimiser.beagleoptimiser import find_fastest_beast_option
-        return find_fastest_beast_option( *args, **kwargs )
+        from beagleoptimiser.beagleoptimiser import run_beast_option
+        return run_beast_option( *args, **kwargs )
 
-    def test_picks_cpu( self ):
-        with patch('beagleoptimiser.beagleoptimiser.estimate_beast_runtime') as p:
-            p.side_effect = [0.1, 1, 2]
+    def test_picks_correctly( self ):
+        import contextlib
+        with contextlib.nested(
+                patch('beagleoptimiser.beagleoptimiser.get_available_beagle_options'),
+                patch('beagleoptimiser.beagleoptimiser.estimate_beast_runtime')
+            ) as (p1, p2):
+            times = [random.random() for i in range(8)]
+            p1.return_value = self.avail_options
+            p2.side_effect = times
+            
+            r = self._C( self.beastfiles[0] )
+            expected = zip( self.avail_options, times )
+            expected.sort( key=lambda x: x[1] )
+            eq_( expected, r )
