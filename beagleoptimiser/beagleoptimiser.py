@@ -4,8 +4,49 @@ import tempfile
 import os
 import shutil
 from os.path import abspath
-
+import itertools
 from datetime import datetime, timedelta
+import multiprocessing
+
+def find_fastest_beast_option( xmlfile ):
+    '''
+    Runs beast with a combination of available -beagle_options
+    Focuses only on the following options:
+        -beagle_CPU
+        -beagle_SSE
+        -beagle_GPU
+        -beagle_instances 2/4/6/8..CPU_COUNT
+    '''
+    pass
+
+def get_available_beagle_options( ):
+    '''
+    Return a list of beagle options that can be passed to beast
+    Returns a list of options such as 
+        ['-beagle_SSE','-beagle_CPU','-beagle_GPU','-beagle_instances']
+
+    Will only return -beagle_SSE or -beagle_CPU with preference of -beagle_SSE
+     as SSE should always be faster than CPU
+    '''
+    cmd = ['beast', '-beagle_info']
+    p = Popen(cmd, stdout=PIPE)
+    sout,serr = p.communicate()
+    resourcelist = sout.rstrip().partition( 'BEAGLE resources available:\n' )[2]
+    resourcelist = resourcelist.split('\n\n\n')
+    options = set()
+    for resource in resourcelist:
+        if 'CPU' in resource and '-beagle_SSE' not in options:
+            options.add( '-beagle_CPU' )
+        if 'VECTOR_SSE' in resource:
+            options.add( '-beagle_SSE' )
+            options.discard( '-beagle_CPU' )
+        if 'GPU' in resource:
+            options.add( '-beagle_GPU' )
+
+    for i in range(2, multiprocessing.cpu_count()+1, 2):
+        options.add( '-beagle_instances {0}'.format(i) )
+
+    return list(options)
 
 def estimate_beast_runtime( xmlfile, seed=999, **beast_options ):
     '''

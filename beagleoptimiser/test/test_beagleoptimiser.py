@@ -4,6 +4,7 @@ from os.path import *
 import tempfile
 import shutil
 import subprocess
+import multiprocessing
 
 from mock import Mock, patch
 from nose.tools import eq_, ok_, raises, assert_almost_equal
@@ -50,7 +51,7 @@ class BeastOptimiser(object):
         m.return_value.stderr = serr
         return m
 
-    def mock_beast( self, sleeptime=0.01 ):
+    def mock_beast( self, hpm, sleeptime=0.01 ):
         output = '''
 a whole lot of stuff 
 that 
@@ -58,15 +59,9 @@ should be ignored
 state    Posterior       Prior           Likelihood      rootHeight      uced.mean   
 0    -146157.0121    -6973.1750      -139183.8371    37.0010         1.00000         -
 10000    -92741.3088     -10087.6418     -82653.6670     50.6558         13.4161         -
-20000    -85760.1142     -9831.5681      -75928.5461     47.0661         12.7912         6.5 hours/million states
+20000    -85760.1142     -9831.5681      -75928.5461     47.0661         12.7912         {hpm} hours/million states
 30000    -80843.8855     -9745.0147      -71098.8708     45.9425         11.1163         6.45 hours/million states
-Underflow calculating likelihood. Attempting a rescaling...
-40000    -78239.7523     -9741.7722      -68497.9801     46.1185         9.90248         6.61 hours/million states
-50000    -76595.3961     -9725.2361      -66870.1601     46.4219         9.55640         6.67 hours/million states
-60000    -74763.2233     -9685.8863      -65077.3371     46.0076         9.10706         6.43 hours/million states
-70000    -73224.9638     -9663.0780      -63561.8859     46.1451         9.02328         6.09 hours/million states
-80000    -71819.2802     -9557.8338      -62261.4463     45.2624         9.26833         6.34 hours/million states
-'''
+'''.format(hpm=hpm)
         beast = self._fake_popen( output, '', sleeptime )
         return beast
 
@@ -117,7 +112,7 @@ class TestEstimateBeastRuntime(BaseTempDir):
 
     def test_waits_for_hours_million_line( self ):
         with patch( 'beagleoptimiser.beagleoptimiser.Popen',
-                self.mock_beast() ) as p:
+                self.mock_beast(6.5) ) as p:
             r = self._C( self.beastfiles[0], 999, **{'-beagle_SSE':True} ) 
         assert_almost_equal( 0.65, r )
 
@@ -181,7 +176,6 @@ class TestGetHoursPerMillion(BeastOptimiser):
         r = self._C( line.format(1.5) )
         eq_( 1.5 / 1000, r )
 
-@attr('current')
 class TestPrettyTime(object):
     def _C( self, *args, **kwargs ):
         from beagleoptimiser.beagleoptimiser import pretty_time
@@ -215,3 +209,198 @@ class TestPrettyTime(object):
     def test_really_big_number( self ):
         r = self._C( 256.0 )
         eq_( '10:16:00:00.0', r )
+
+class BeagleOptions(object):
+    def _make_resource( self, *args, **kwargs ):
+        ''' Produce a -beagle_info resource string '''
+        fmt = "{index} : {name}\n"
+        if 'GPU' in kwargs['flags']['processor']:
+            gpufmt = '    Global memory (MB): {memory}\n'
+            gpufmt += '    Clock speed (Ghz): {clockspeed}\n'
+            gpufmt += '    Number of cores: {corecount}\n'
+            fmt += gpufmt.format(**kwargs)
+        fmt += "    Flags: {flags}\n"
+        fmt += "\n\n"
+
+        return fmt.format(
+            index=kwargs['index'],
+            name=kwargs['name'],
+            flags=self._make_flags(**kwargs['flags'])
+        )
+
+    def _make_flags( self, **flags ):
+        '''
+        Produce flags string
+        vector_sse - If true than VECTOR_SSE will be added
+        processor - PROCESSOR_CPU or PROCESSOR_GPU
+        framework - FRAMEWORK_CPU or FRAMEWORK_CUDA
+        '''
+        if flags.get('vector_sse', False):
+            flags['vector_sse'] = ' VECTOR_SSE'
+        else:
+            flags['vector_sse'] = ''
+            
+        flags_str = 'PRECISION_SINGLE PRECISION_DOUBLE COMPUTATION_SYNCH' \
+            ' EIGEN_REAL EIGEN_COMPLEX SCALING_MANUAL SCALING_AUTO ' \
+            'SCALING_ALWAYS SCALERS_RAW SCALERS_LOG{vector_sse} ' \
+            'VECTOR_NONE THREADING_NONE {processor} {framework}'
+        return flags_str.format( **flags )
+
+    def test_creates_correct_cpu_resource_string( self ):
+        r = self._make_resource(
+            index=0,
+            name='CPU',
+            flags={
+                'vector_sse': True,
+                'processor': 'PROCESSOR_CPU',
+                'framework': 'FRAMEWORK_CPU'
+            }
+        )
+
+        cpu_resource = '''0 : CPU
+    Flags: PRECISION_SINGLE PRECISION_DOUBLE COMPUTATION_SYNCH EIGEN_REAL EIGEN_COMPLEX SCALING_MANUAL SCALING_AUTO SCALING_ALWAYS SCALERS_RAW SCALERS_LOG VECTOR_SSE VECTOR_NONE THREADING_NONE PROCESSOR_CPU FRAMEWORK_CPU
+
+
+'''
+        eq_( cpu_resource, r )
+
+    def test_creates_correct_gpu_resource_string( self ):
+        r = self._make_resource(
+            index=1,
+            name='Tesla C2075',
+            memory=5375,
+            clockspeed=1.15,
+            corecount=448,
+            flags={
+                'processor': 'PROCESSOR_GPU',
+                'framework': 'FRAMEWORK_CUDA'
+            }
+        )
+
+        gpu_resource = '''1 : Tesla C2075
+    Global memory (MB): 5375
+    Clock speed (Ghz): 1.15
+    Number of cores: 448
+    Flags: PRECISION_SINGLE PRECISION_DOUBLE COMPUTATION_SYNCH EIGEN_REAL EIGEN_COMPLEX SCALING_MANUAL SCALING_AUTO SCALING_ALWAYS SCALERS_RAW SCALERS_LOG VECTOR_NONE THREADING_NONE PROCESSOR_GPU FRAMEWORK_CUDA
+
+
+'''
+        eq_( gpu_resource, r )
+
+    def _mock_beagle_info( self, resourcestring ):
+        ''' Mock popen call that runs beast -beagle_info '''
+        beagle_info = Mock()
+        str = 'IGNORE THIS STUFF'
+        str += '\n\n'
+        str += 'BEAGLE resources available:\n'
+        str += resourcestring
+        beagle_info.communicate.return_value = (str,'')
+        return Mock(return_value=beagle_info)
+
+    def _expected_beagle_instances( self ):
+        inst = []
+        for i in range(2, multiprocessing.cpu_count()+1, 2):
+            inst.append( '-beagle_instances {0}'.format(i) )
+        return inst
+
+@attr('current')
+class TestGetAvailableBeagleOptions(BeagleOptions):
+    def setUp(self):
+        self.resources = []
+        self.resources.append(
+            self._make_resource(
+                index=0,
+                name='CPU',
+                flags={
+                    'vector_sse': True,
+                    'processor': 'PROCESSOR_CPU',
+                    'framework': 'FRAMEWORK_CPU'
+                }
+            )
+        )
+        self.resources.append(
+            self._make_resource(
+                index=1,
+                name='Graphics card',
+                memory=1024,
+                corecount=192,
+                clockspeed=1.2,
+                flags={
+                    'processor': 'PROCESSOR_GPU',
+                    'framework': 'FRAMEWORK_CUDA'
+                }
+            )
+        )
+        self.resources.append(
+            self._make_resource(
+                index=1,
+                name='Graphics card 2',
+                memory=1024,
+                corecount=192,
+                clockspeed=1.2,
+                flags={
+                    'processor': 'PROCESSOR_GPU',
+                    'framework': 'FRAMEWORK_CUDA'
+                }
+            )
+        )
+
+    def _C( self, *args, **kwargs ):
+        from beagleoptimiser.beagleoptimiser import get_available_beagle_options
+        return get_available_beagle_options( *args, **kwargs )
+
+    def test_gets_beaglesse_for_vector_sse( self ):
+        expected_options = [
+            '-beagle_SSE',
+        ] + self._expected_beagle_instances()
+        resource = self._mock_beagle_info( self.resources[0] )
+        with patch('beagleoptimiser.beagleoptimiser.Popen', resource):
+            r = self._C()
+            eq_( sorted(expected_options), sorted(r) )
+
+    def test_gets_correct_gpu_options( self ):
+        resource = self._make_resource(
+            index=0,
+            name='Graphics card',
+            memory=1024,
+            corecount=192,
+            clockspeed=1.2,
+            flags={
+                'processor': 'PROCESSOR_GPU',
+                'framework': 'FRAMEWORK_CUDA'
+            }
+        )
+        expected_options = [
+            '-beagle_GPU',
+        ] + self._expected_beagle_instances()
+        resource = self._mock_beagle_info( self.resources[1] )
+        with patch('beagleoptimiser.beagleoptimiser.Popen', resource):
+            r = self._C()
+            eq_( sorted(expected_options), sorted(r) )
+
+    def test_gets_correct_cpu_and_gpu_options( self ):
+        expected_options = [
+            '-beagle_SSE',
+            '-beagle_GPU',
+        ] + self._expected_beagle_instances()
+        resource = self._mock_beagle_info(
+            self.resources[0] + self.resources[1] + self.resources[2]
+        )
+        with patch('beagleoptimiser.beagleoptimiser.Popen', resource):
+            r = self._C()
+            eq_( sorted(expected_options), sorted(r) )
+
+@attr('current')
+class TestFindFastestBeastOptions(BeagleOptions, BaseTempDir):
+    def setUp( self ):
+        super(TestFindFastestBeastOptions,self).setUp()
+        from beagleoptimiser.beagleoptimiser import get_available_beagle_options
+        self.avail_options = get_available_beagle_options()
+
+    def _C( self, *args, **kwargs ):
+        from beagleoptimiser.beagleoptimiser import find_fastest_beast_option
+        return find_fastest_beast_option( *args, **kwargs )
+
+    def test_picks_cpu( self ):
+        with patch('beagleoptimiser.beagleoptimiser.estimate_beast_runtime') as p:
+            p.side_effect = [0.1, 1, 2]

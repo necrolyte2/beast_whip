@@ -24,19 +24,25 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from sys import exit
-import sys
-import subprocess
-import time
-import timeit
-import os
-from operator import itemgetter
-from optparse import OptionParser
-import fileinput
-from xml.dom.minidom import parse, parseString
+#from sys import exit
+#import sys
+#import subprocess
+#import time
+#import timeit
+#import os
+#from operator import itemgetter
+#from optparse import OptionParser
+#import fileinput
+#from xml.dom.minidom import parse, parseString
+#import xml.dom.minidom as dom
+
 from os.path import split, dirname, basename, join
 import argparse
-#import xml.dom.minidom as dom
+
+from beagleoptimiser.beagleoptimiser import (
+    estimate_beast_runtime,
+    pretty_time
+)
 
 def main( args ):
     #beagle_info()
