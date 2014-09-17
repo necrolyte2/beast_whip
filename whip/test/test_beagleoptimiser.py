@@ -84,7 +84,7 @@ class BaseTempDir(BeastOptimiser):
 
 class TestKwargsToOptions(BeastOptimiser):
     def _C( self, *args, **kwargs ):
-        from beagleoptimiser.beagleoptimiser import kwargs_to_options
+        from whip.beagleoptimiser import kwargs_to_options
         return kwargs_to_options( *args, **kwargs )
 
     def test_keyword_with_string_int_float_value( self ):
@@ -110,15 +110,16 @@ class TestKwargsToOptions(BeastOptimiser):
 
 class TestEstimateBeastRuntime(BaseTempDir):
     def _C( self, *args, **kwargs ):
-        from beagleoptimiser.beagleoptimiser import estimate_beast_runtime
+        from whip.beagleoptimiser import estimate_beast_runtime
         return estimate_beast_runtime( *args, **kwargs )
 
     def test_waits_for_hours_million_line( self ):
-        with patch( 'beagleoptimiser.beagleoptimiser.Popen',
+        with patch( 'whip.beagleoptimiser.Popen',
                 self.mock_beast(6.5) ) as p:
             r = self._C( self.beastfiles[0], 999, **{'-beagle_SSE':True} ) 
         assert_almost_equal( 0.65, r )
 
+    @attr('current')
     def test_output_goes_to_specified_location( self ):
         sout = StringIO()
         r = self._C( self.beastfiles[0], 999, stream=sout, **{'-beagle_SSE':True} )
@@ -147,7 +148,7 @@ class TestEstimateBeastRuntime(BaseTempDir):
 
 class TestGetChainLength(BeastOptimiser):
     def _C( self, *args, **kwargs ):
-        from beagleoptimiser.beagleoptimiser import get_chainlength
+        from whip.beagleoptimiser import get_chainlength
         return get_chainlength( *args, **kwargs )
 
     def test_gets_correct_chainlength_as_integer( self ):
@@ -160,7 +161,7 @@ class TestGetChainLength(BeastOptimiser):
 
 class TestGetHoursPerMillion(BeastOptimiser):
     def _C( self, *args, **kwargs ):
-        from beagleoptimiser.beagleoptimiser import get_hours_per_million
+        from whip.beagleoptimiser import get_hours_per_million
         return get_hours_per_million( *args, **kwargs )
 
     def test_gets_none_for_lines_with_no_hoursmillion( self ):
@@ -189,7 +190,7 @@ class TestGetHoursPerMillion(BeastOptimiser):
 
 class TestPrettyTime(object):
     def _C( self, *args, **kwargs ):
-        from beagleoptimiser.beagleoptimiser import pretty_time
+        from whip.beagleoptimiser import pretty_time
         return pretty_time( *args, **kwargs )
 
     def test_converts_to_days( self ):
@@ -217,7 +218,6 @@ class TestPrettyTime(object):
         r = self._C( 0.000258 )
         eq_( '00:00:00:00.928800', r )
 
-    @attr('current')
     def test_really_big_number( self ):
         r = self._C( sys.maxint )
         eq_( 'INF', r )
@@ -357,7 +357,7 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
         )
 
     def _C( self, *args, **kwargs ):
-        from beagleoptimiser.beagleoptimiser import get_available_beagle_options
+        from whip.beagleoptimiser import get_available_beagle_options
         return get_available_beagle_options( *args, **kwargs )
 
     def test_gets_beaglesse_for_vector_sse( self ):
@@ -365,7 +365,7 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
             '-beagle_SSE',
         ] + self._expected_beagle_instances('-beagle_SSE')
         resource = self._mock_beagle_info( self.resources[0] )
-        with patch('beagleoptimiser.beagleoptimiser.Popen', resource):
+        with patch('whip.beagleoptimiser.Popen', resource):
             r = self._C()
             eq_( sorted(expected_options), sorted(r) )
 
@@ -385,7 +385,7 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
             '-beagle_GPU',
         ] + self._expected_beagle_instances('-beagle_GPU')
         resource = self._mock_beagle_info( self.resources[1] )
-        with patch('beagleoptimiser.beagleoptimiser.Popen', resource):
+        with patch('whip.beagleoptimiser.Popen', resource):
             r = self._C()
             eq_( sorted(expected_options), sorted(r) )
 
@@ -398,14 +398,14 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
         resource = self._mock_beagle_info(
             self.resources[0] + self.resources[1] + self.resources[2]
         )
-        with patch('beagleoptimiser.beagleoptimiser.Popen', resource):
+        with patch('whip.beagleoptimiser.Popen', resource):
             r = self._C()
             eq_( sorted(expected_options), sorted(r) )
 
 class TestRunBeastOptions(BeagleOptions, BaseTempDir):
     def setUp( self ):
         super(TestRunBeastOptions,self).setUp()
-        from beagleoptimiser.beagleoptimiser import get_available_beagle_options
+        from whip.beagleoptimiser import get_available_beagle_options
         self.avail_options = [
             '-beagle_SSE',
             '-beagle_SSE -beagle_instances 2',
@@ -418,14 +418,13 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir):
         ]
 
     def _C( self, *args, **kwargs ):
-        from beagleoptimiser.beagleoptimiser import run_beast_options
+        from whip.beagleoptimiser import run_beast_options
         return run_beast_options( *args, **kwargs )
 
-    @attr('current')
     def test_excludelist_excludes_options( self ):
         with contextlib.nested(
-                patch('beagleoptimiser.beagleoptimiser.get_available_beagle_options'),
-                patch('beagleoptimiser.beagleoptimiser.estimate_beast_runtime'),
+                patch('whip.beagleoptimiser.get_available_beagle_options'),
+                patch('whip.beagleoptimiser.estimate_beast_runtime'),
             ) as (p1, p2):
             times = [random.random() for i in range(8)]
             p1.return_value = self.avail_options
@@ -444,8 +443,8 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir):
 
     def test_sends_to_correct_output_stream( self ):
         with contextlib.nested(
-                patch('beagleoptimiser.beagleoptimiser.get_available_beagle_options'),
-                patch('beagleoptimiser.beagleoptimiser.estimate_beast_runtime'),
+                patch('whip.beagleoptimiser.get_available_beagle_options'),
+                patch('whip.beagleoptimiser.estimate_beast_runtime'),
             ) as (p1, p2):
             times = [random.random() for i in range(8)]
             p1.return_value = self.avail_options
@@ -459,8 +458,8 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir):
 
     def test_picks_correctly( self ):
         with contextlib.nested(
-                patch('beagleoptimiser.beagleoptimiser.get_available_beagle_options'),
-                patch('beagleoptimiser.beagleoptimiser.estimate_beast_runtime')
+                patch('whip.beagleoptimiser.get_available_beagle_options'),
+                patch('whip.beagleoptimiser.estimate_beast_runtime')
             ) as (p1, p2):
             times = [random.random() for i in range(8)]
             p1.return_value = self.avail_options
@@ -471,11 +470,10 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir):
             expected.sort( key=lambda x: x[1] )
             eq_( expected, r )
 
-    @attr('current')
     def test_handles_bad_beast_run_exception( self ):
         with contextlib.nested(
-                patch('beagleoptimiser.beagleoptimiser.get_available_beagle_options'),
-                patch('beagleoptimiser.beagleoptimiser.estimate_beast_runtime')
+                patch('whip.beagleoptimiser.get_available_beagle_options'),
+                patch('whip.beagleoptimiser.estimate_beast_runtime')
             ) as (p1, p2):
             times = [random.random() for i in range(8)]
             p1.return_value = self.avail_options

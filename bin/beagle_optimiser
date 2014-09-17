@@ -6,7 +6,7 @@ import sys
 import os
 import argparse
 
-from beagleoptimiser.beagleoptimiser import (
+from whip.beagleoptimiser import (
     estimate_beast_runtime,
     pretty_time,
     run_beast_options,
