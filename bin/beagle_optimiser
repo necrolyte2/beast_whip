@@ -14,13 +14,14 @@ from whip.beagleoptimiser import (
 )
 
 def main( args ):
-    #beagle_info()
-    #system_info()
-    #file_format()
+    # Run on each xmlfile
     for xmlfile in args.inputfiles:
         runtimes = run_beast_options( xmlfile, args.outputstream, args.exclude )
+    # Print the results
+    print
+    print "Results sorted by estimated runtime:"
     for options, esthours in runtimes:
-        print "{0} estimated to take {1}".format(options,pretty_time(esthours))
+        print "\t{0} estimated to take {1}".format(options,pretty_time(esthours))
 
 def parse_args( args=sys.argv[1:] ):
     avail_options = '\n'.join( get_available_beagle_options() )
