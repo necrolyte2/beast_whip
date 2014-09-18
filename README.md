@@ -4,6 +4,16 @@ beast_whip is a project based on the original [beagle_optimiser](https://github.
 The object of the new project is to take an XML input file prepared for BEAST and find
 the beagle option that will result in the shortest analysis time of that file.
 
+### Requirements
+
+All of the python packages should be mostly taken care of during the install.
+lxml does require that the libxml-devel and libxslt-devel packages for your distribution are installed though.
+On Red Hat you can install them via:
+
+```
+su -c "yum install libxml2-devel libxslt-devel"
+```
+
 ### Install
 
 It is highly suggested that you install into a virtualenv environment
@@ -115,3 +125,4 @@ As each beagle option is run with beast it will output what option it is running
 - Output options that will be run so people can see in case they want to exclude some
 - Somehow also include -beagle_order when there are 2 GPU
 - Put time taken to generate the estimate beside each estimate
+- Document xmlsplit.py
