@@ -16,8 +16,27 @@ from nose.plugins.attrib import attr
 # Shortcut to directory this file is in
 THIS = dirname(abspath(__file__))
 
-class BeastBase(object):
+class MultipleInhBase(object):
+    '''
+    Conused by multiple inheritance I think
+    So you have to call super all the way up the chain
+    So hacky hackerton here to the rescue
+    Read this or something:
+    http://nedbatchelder.com/blog/201210/multiple_inheritance_is_hard.html
+    '''
+    def setUp(self):
+        sup = super(MultipleInhBase,self)
+        if hasattr(sup,'setUp'):
+            sup.setUp()
+
+    def tearDown(self):
+        sup = super(MultipleInhBase,self)
+        if hasattr(sup,'tearDown'):
+            sup.tearDown()
+
+class BeastBase(MultipleInhBase):
     def setUp( self ):
+        getattr(super(BeastBase),'setUp',None)
         self.mrbayesfiles = [
             join( THIS, 'mrbayes.nex' ),
         ]
