@@ -119,7 +119,6 @@ class TestEstimateBeastRuntime(BaseTempDir):
             r = self._C( self.beastfiles[0], 999, **{'-beagle_SSE':True} ) 
         assert_almost_equal( 0.65, r )
 
-    @attr('current')
     def test_output_goes_to_specified_location( self ):
         sout = StringIO()
         r = self._C( self.beastfiles[0], 999, stream=sout, **{'-beagle_SSE':True} )
@@ -188,6 +187,7 @@ class TestGetHoursPerMillion(BeastOptimiser):
         r = self._C( line.format(1.5) )
         eq_( 1.5 / 1000, r )
 
+@attr('current')
 class TestPrettyTime(object):
     def _C( self, *args, **kwargs ):
         from whip.beagleoptimiser import pretty_time
@@ -196,27 +196,27 @@ class TestPrettyTime(object):
     def test_converts_to_days( self ):
         # Should be 1 day of hours
         r = self._C( 24.0 )
-        eq_( '01:00:00:00.0', r )
+        eq_( '1d 00:00:00.0', r )
 
     def test_converts_to_hours( self ):
         r = self._C( 1.0 )
-        eq_( '00:01:00:00.0', r )
+        eq_( '01:00:00.0', r )
 
     def test_converts_to_minutes( self ):
         r = self._C( 1.0 / 60.0 )
-        eq_( '00:00:01:00.0', r )
+        eq_( '00:01:00.0', r )
 
     def test_converts_to_seconds( self ):
         r = self._C( 1.0 / 3600 )
-        eq_( '00:00:00:01.0', r )
+        eq_( '00:00:01.0', r )
 
     def test_converts_to_all( self ):
         r = self._C( 24.0 + 1.0 + (1.0 / 60.0) + (1.0 / 3600.0) )
-        eq_( '01:01:01:01.0', r )
+        eq_( '1d 01:01:01.0', r )
 
     def test_really_small_number( self ):
         r = self._C( 0.000258 )
-        eq_( '00:00:00:00.928800', r )
+        eq_( '00:00:00.928800', r )
 
     def test_really_big_number( self ):
         r = self._C( sys.maxint )

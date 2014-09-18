@@ -157,10 +157,14 @@ def pretty_time( hours_float ):
         td = timedelta( hours=hours_float )
     except OverflowError as e:
         return 'INF'
+
     # From the beginning of Unix time add our time delta
     dt = datetime(1,1,1) + td
     # Time format we like
-    fmt = '{0:02d}:{1:02d}:{2:02d}:{3:02d}.{4}'
+    fmt = '{1:02d}:{2:02d}:{3:02d}.{4}'
+    # Add days if needed
+    if dt.day-1 > 0:
+        fmt = '{0}d ' + fmt    
     return fmt.format(dt.day-1, dt.hour, dt.minute, dt.second, dt.microsecond)
 
 def kwargs_to_options( **kwargs ):
