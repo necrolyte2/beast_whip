@@ -117,5 +117,6 @@ def split_xml( xmlfile, numfiles ):
         for itaxa, staxa in chunk:
             xml.xpath('taxa')[0].append(itaxa)
             xml.xpath('alignment')[0].append(staxa)
+            set_dimensions(xml, len(chunk))
             with open('split_{0}.xml'.format(i),'w') as fh:
                 xml.write(fh)

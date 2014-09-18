@@ -22,6 +22,17 @@ class BaseXmlSplitter(BaseTester):
         self.xmlstr = '<?xml version="1.0" standalone="yes"?>\n'
         self.xmlstr += '<beast>\n'
 
+    def _taxseqxml( self, num ):
+        taxons = ['<taxon id="seq{0}"></taxon>'.format(i) for i in range(num)]
+        sequences = ['<sequence><taxon idref="seq{0}"/>ATGC</sequence>'.format(i) for i in range(num)]
+
+        self.xmlstr += '<taxa id="taxa">{0}</taxa>\n'.format(''.join(taxons))
+        self.xmlstr += '<alignment id="alignment" dataType="nucleotide">{0}</alignment>\n'.format(''.join(sequences))
+        self.xmlstr += '<parameter id="skyride.logPopSize" dimension="{0}" value="3.9512437185814275"/>\n'.format(num)
+        self.xmlstr += '<groupSizes><parameter id="skyride.groupSize" dimension="{0}"/></groupSizes>\n'.format(num)
+
+        return self._xml(self.xmlstr)
+
     def _xml( self, xmlstr ):
         xmlstr += '</beast>\n'
         return etree.fromstring(xmlstr)
@@ -32,6 +43,16 @@ class TestSetDimensions(BaseXmlSplitter):
     def test_xml_missing_dimensions( self ):
         # Nothing to check really other than no exception
         self._C( self._xml(self.xmlstr), 100 )
+
+    @attr('current')
+    def test_sets_dimensions_correctly( self ):
+        xml = self._taxseqxml( 10 )
+        self._C( xml, 5 )
+        xmlstr = etree.tostring( xml )
+        print xmlstr
+        ok_( 'dimension="4"' in xmlstr )
+        ok_( 'dimension="10"' not in xmlstr )
+        
 
     def test_sets_dimensions_for_parameter_only( self ):
         self.xmlstr += '<parameter id="skyride.logPopSize" dimension="1440" value="3.9512437185814275"/>\n'
@@ -45,26 +66,9 @@ class TestSetDimensions(BaseXmlSplitter):
 class TestSplitXml(BaseXmlSplitter,BaseTempDir):
     functionname = 'split_xml'
 
-    def setUp( self ):
-        super(TestSplitXml,self).setUp()
-
-    def tearDown( self ):
-        super(TestSplitXml,self).tearDown()
-
     def _writexmlfile( self, xml, xmlfilepath ):
         with open(xmlfilepath,'w') as fh:
             fh.write( etree.tostring(xml) )
-
-    def _taxseqxml( self, num ):
-        taxons = ['<taxon id="seq{0}"></taxon>'.format(i) for i in range(num)]
-        sequences = ['<sequence><taxon idref="seq{0}"/>ATGC</sequence>'.format(i) for i in range(num)]
-
-        self.xmlstr += '<taxa id="taxa">{0}</taxa>\n'.format(''.join(taxons))
-        self.xmlstr += '<alignment id="alignment" dataType="nucleotide">{0}</alignment>\n'.format(''.join(sequences))
-        self.xmlstr += '<parameter id="skyride.logPopSize" dimension="{0}" value="3.9512437185814275"/>\n'.format(num)
-        self.xmlstr += '<groupSizes><parameter id="skyride.groupSize" dimension="{0}"/></groupSizes>\n'.format(num)
-
-        return self._xml(self.xmlstr)
 
     def test_splits_into_correct_amount_of_files( self ):
         xml = self._taxseqxml( 10 )
@@ -85,6 +89,19 @@ class TestSplitXml(BaseXmlSplitter,BaseTempDir):
         t2 = s1xml.xpath('taxa')[0].findall('taxon')
         eq_( 5, len(s2) )
         eq_( 5, len(t2) )
+
+    @attr('current')
+    def test_changes_dimension_parameter( self ):
+        xml = self._taxseqxml( 10 )
+        self._writexmlfile( xml, 'input.xml' )
+        self._C( 'input.xml', 2 )
+
+        for f in ('split_1.xml','split_2.xml'):
+            with open(f) as fh:
+                contents = fh.read()
+                print contents
+                ok_( 'dimension="4"' in contents )
+                ok_( 'dimension="10"' not in contents )
 
 class TestGetAllIDtaxaSeqtaxa(BaseXmlSplitter):
     functionname = 'get_all_idtaxa_seqtaxa'
