@@ -1,4 +1,4 @@
-### Introduction
+## Introduction
 
 beast_whip is a project based on the original [beagle_optimiser](https://github.com/mtop/beagle_optimiser)
 The object of the new project is to try and make it easier to run beast xml files.
@@ -12,7 +12,7 @@ splitxml is simply a script that will take a beast xml file and split it as even
 The idea is that each piece should be able to be run separately on different computers to hopefully parallelize
 the run and then the results can be combined later using [LogCombiner](http://beast.bio.ed.ac.uk/)
 
-### Requirements
+## Requirements
 
 All of the python packages should be mostly taken care of during the setup.py install.
 lxml does require that the libxml-devel and libxslt-devel packages for your distribution are installed though
@@ -24,7 +24,7 @@ On Red Hat you can install them via:
 su -c "yum install libxml2-devel libxslt-devel"
 ```
 
-### Install
+## Install
 
 It is highly suggested that you install into a virtualenv environment
 http://virtualenv.readthedocs.org/en/latest/virtualenv.html#installation
@@ -132,9 +132,44 @@ Results sorted by estimated runtime:
 
 As each beagle option is run with beast it will output what option it is running. When the first hours/million states line is encountered beagle_optimiser will kill the beast process and use the chainLength from the given xml file and the hours/million states from the output to compute the estimated run time in #days HH:MM:SS.milliseconds
 
-### TODO:
+## splitxml
 
-- Output options that will be run so people can see in case they want to exclude some
-- Somehow also include -beagle_order when there are 2 GPU
-- Put time taken to generate the estimate beside each estimate
-- Document xmlsplit.py
+Splits a beast xml file into N files. At this point each file will just be named split_N.xml, where N is replaced with 1-N.
+splitxml at this time will also find any <parameter...dimension="X"...> tags and replace the dimension="X" with how many taxon's are in each file - 1.
+I don't know why there are length(taxon)-1, but it is what it is.
+
+### Example Usage
+
+#### Split an xml into 2 files
+
+```
+splitxml.py whip/test/benchmark1.xml
+```
+You will now have 2 xml files called split_1.xml and split_2.xml in the current directory
+
+#### Specify how many files to generate
+
+```
+splitxml.py whip/test/benchmark1.xml --files 10
+```
+And just to verify
+```
+for f in split_*.xml; do echo -n "$f: "; grep '</taxon>' $f | wc -l; done;
+split_10.xml: 136
+split_1.xml: 145
+split_2.xml: 145
+split_3.xml: 145
+split_4.xml: 145
+split_5.xml: 145
+split_6.xml: 145
+split_7.xml: 145
+split_8.xml: 145
+split_9.xml: 145
+```
+
+## TODO:
+
+- beagle_optimiser: Output options that will be run so people can see in case they want to exclude some
+- beagle_optimiser: Somehow also include -beagle_order when there are 2 GPU
+- beagle_optimiser: Put time taken to generate the estimate beside each estimate
+- xmlsplit.py: Be able to specify the prefix of output files or default to the original name
