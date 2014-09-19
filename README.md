@@ -1,13 +1,23 @@
 ### Introduction
 
 beast_whip is a project based on the original [beagle_optimiser](https://github.com/mtop/beagle_optimiser)
-The object of the new project is to take an XML input file prepared for BEAST and find
-the beagle option that will result in the shortest analysis time of that file.
+The object of the new project is to try and make it easier to run beast xml files.
+
+It is composed of two primary pieces, beagle_optimiser and splitxml.
+
+Beagle Optimiser will take an XML input file prepared for BEAST and run all available beagle options on that
+file and then output the estimated time each of them would take to run.
+
+splitxml is simply a script that will take a beast xml file and split it as evenly as possible into N pieces.
+The idea is that each piece should be able to be run separately on different computers to hopefully parallelize
+the run and then the results can be combined later using [LogCombiner](http://beast.bio.ed.ac.uk/)
 
 ### Requirements
 
-All of the python packages should be mostly taken care of during the install.
-lxml does require that the libxml-devel and libxslt-devel packages for your distribution are installed though.
+All of the python packages should be mostly taken care of during the setup.py install.
+lxml does require that the libxml-devel and libxslt-devel packages for your distribution are installed though
+as they are required for compiling the python-c modules.
+
 On Red Hat you can install them via:
 
 ```
@@ -50,9 +60,11 @@ http://virtualenv.readthedocs.org/en/latest/virtualenv.html#installation
   python setup.py install
   ```
 
-After this finishes you will have installed and activated a new virtualenv called bw inside of the beast_whip directory. Then beast_whip will be installed into that virtualenv.
-If you already have virtualenv then you can omit step 3 and replace step 4 with activating your existing virtualenv
+After this finishes you will have installed and activated a new virtualenv called bw inside of the beast_whip directory.
+If you already have virtualenv then you can omit step 3 and replace step 4 with activating your existing virtualenv.
 
+
+## beagle_optimiser
 
 ### Example Usage
 
