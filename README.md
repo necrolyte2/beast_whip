@@ -253,3 +253,4 @@ A good example/tutorial is to use the benchmark1.xml file that comes with beast.
 - beagle_optimiser: Somehow also include -beagle_order when there are 2 GPU
 - beagle_optimiser: Put time taken to generate the estimate beside each estimate
 - xmlsplit.py: Be able to specify the prefix of output files or default to the original name
+- xmlsplit.py: Needs to change all of the log file names in each file as well so they can be merged together
