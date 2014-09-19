@@ -167,6 +167,86 @@ split_8.xml: 145
 split_9.xml: 145
 ```
 
+## Complete Example
+
+A good example/tutorial is to use the benchmark1.xml file that comes with beast. This file can be located in either beast_whip/whip/test/benchmark1.xml or under your BEAST/examples/Benchmark/benchmark1.xml.
+
+1. Make a testing directory and copy benchmark1.xml into it
+
+  ```
+  cd beast_whip
+  mkdir -p benchmark1 && cd benchmark1
+  cp ../whip/test/benchmark1.xml .
+  ```
+  
+2. Figure out what beagle option is the fastest for that file on your computer
+
+  ```
+  beagle_optimiser benchmark1.xml
+  ```
+  
+  Output
+  
+  ```
+  beagle_optimiser benchmark1.xml
+  Running beast with -beagle_SSE
+  -beagle_SSE estimate: 00:02:42.0
+  Running beast with -beagle_SSE -beagle_instances 2
+  -beagle_SSE -beagle_instances 2 estimate: 00:02:27.600000
+  Running beast with -beagle_SSE -beagle_instances 4
+  -beagle_SSE -beagle_instances 4 estimate: 00:02:27.600000
+  Running beast with -beagle_SSE -beagle_instances 6
+  -beagle_SSE -beagle_instances 6 estimate: INF
+  Running beast with -beagle_SSE -beagle_instances 8
+  -beagle_SSE -beagle_instances 8 estimate: 00:03:14.400000
+  
+  Results sorted by estimated runtime:
+	-beagle_SSE -beagle_instances 2 estimated to take 00:02:27.600000
+	-beagle_SSE -beagle_instances 4 estimated to take 00:02:27.600000
+	-beagle_SSE estimated to take 00:02:42.0
+	-beagle_SSE -beagle_instances 8 estimated to take 00:03:14.400000
+	-beagle_SSE -beagle_instances 6 estimated to take INF
+  ```
+  
+  You can see that the -beagle_SSE -beagle_instances 2 was the fastest runtime so we will use it.
+  
+3. Determine how many files to split benchmark1.xml into and split it
+  
+  This will be determined by how many computers you want to run it on. Just make sure you don't split it up too many
+  times. You want to probably ensure that you don't dip below 100 taxon per file. For our example we will only split
+  it up into 2 files(The default).
+
+  ```
+  splitxml.py benchmark1.xml
+  ```
+
+4. Then run beast on the files across your computers(eventually this might be automated inside of splitxml.py)
+
+  This assumes passwordless ssh to each computer to make the example easier.
+  
+  1. Setup the list of nodes
+  
+  ```
+  nodelist=( computername1 computername2 )
+  ```
+  
+  2. Run xml in round robin across nodelist
+  
+    This requires that you have screen installed on each of your computer nodes so each run can be run inside of a
+    screen session to ensure that a network blip does not cause beast to die.
+  
+    ```
+    i=0
+    xmllist=( $(ls split_*.xml) )
+    for node in ${nodelist[@]}
+    do
+      xml=${xmllist[$i]}
+      echo "Running $xml on $node"
+      ssh ${node} "beast -beagle_SSE -beagle_instances 2 ${xml} > ${xml}.out 2>&1" &
+      i=$((i+1))
+    done
+    ```
+
 ## TODO:
 
 - beagle_optimiser: Output options that will be run so people can see in case they want to exclude some
