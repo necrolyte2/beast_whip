@@ -33,9 +33,60 @@ class BaseXmlSplitter(BaseTester):
 
         return self._xml(self.xmlstr)
 
+    def _add_filename_log_xml( self, filename ):
+        self.xmlstr += '''
+            <log id="fileLog" logEvery="1000" fileName="{0}.log" overwrite="true">
+                <posterior idref="posterior"/>
+                <prior idref="prior"/>
+                <likelihood idref="likelihood"/>
+                <parameter idref="treeModel.rootHeight"/>
+                <parameter idref="constant.popSize"/>
+                <parameter idref="kappa"/>
+                <parameter idref="frequencies"/>
+                <parameter idref="clock.rate"/>
+                <treeLikelihood idref="treeLikelihood"/>
+                <coalescentLikelihood idref="coalescent"/>
+            </log>
+
+            <logTree id="treeFileLog" logEvery="1000" nexusFormat="true" fileName="{0}.trees" sortTranslationTable="true">
+                <treeModel idref="treeModel"/>
+                <strictClockBranchRates idref="branchRates"/>
+                <posterior idref="posterior"/>
+            </logTree>
+        '''.format(filename)
+
     def _xml( self, xmlstr ):
         xmlstr += '</beast>\n'
         return etree.fromstring(xmlstr)
+
+@attr('current')
+class TestSetFilenames(BaseXmlSplitter):
+    functionname = 'set_filenames'
+
+    @raises(InvalidBeastXmlError)
+    def test_xml_missing_filename_attribute( self ):
+        xml = self._xml(self.xmlstr)
+        self._C( xml, 'test.log' )
+
+    def test_replaces_log_and_logtree( self ):
+        self._add_filename_log_xml('beast')
+        xml = self._xml(self.xmlstr)
+        self._C( xml, 'split_0.xml' )
+        xmlstr = etree.tostring( xml )
+        print xmlstr
+        ok_( 'fileName="split_0.log"' in xmlstr )
+        ok_( 'fileName="split_0.trees"' in xmlstr )
+        ok_( 'beast.log' not in xmlstr )
+        ok_( 'beast.trees' not in xmlstr )
+
+    def test_any_tag_with_fileName_attr( self ):
+        self.xmlstr += '<mytag id="myTag" fileName="replace.me" />\n'
+        xml = self._xml(self.xmlstr)
+        self._C( xml, '/some/path/with.this' )
+        xmlstr = etree.tostring( xml )
+        print xmlstr
+        ok_( 'with.me' in xmlstr )
+        ok_( 'replace.me' not in xmlstr )
 
 class TestSetDimensions(BaseXmlSplitter):
     functionname = 'set_dimensions'
@@ -44,7 +95,6 @@ class TestSetDimensions(BaseXmlSplitter):
         # Nothing to check really other than no exception
         self._C( self._xml(self.xmlstr), 100 )
 
-    @attr('current')
     def test_sets_dimensions_correctly( self ):
         xml = self._taxseqxml( 10 )
         self._C( xml, 5 )
@@ -53,7 +103,6 @@ class TestSetDimensions(BaseXmlSplitter):
         ok_( 'dimension="4"' in xmlstr )
         ok_( 'dimension="10"' not in xmlstr )
         
-
     def test_sets_dimensions_for_parameter_only( self ):
         self.xmlstr += '<parameter id="skyride.logPopSize" dimension="1440" value="3.9512437185814275"/>\n'
         self.xmlstr += '<groupSizes><parameter id="skyride.groupSize" dimension="1440"/></groupSizes>\n'
@@ -90,7 +139,6 @@ class TestSplitXml(BaseXmlSplitter,BaseTempDir):
         eq_( 5, len(s2) )
         eq_( 5, len(t2) )
 
-    @attr('current')
     def test_changes_dimension_parameter( self ):
         xml = self._taxseqxml( 10 )
         self._writexmlfile( xml, 'input.xml' )
@@ -102,6 +150,22 @@ class TestSplitXml(BaseXmlSplitter,BaseTempDir):
                 print contents
                 ok_( 'dimension="4"' in contents )
                 ok_( 'dimension="10"' not in contents )
+
+    @attr('current')
+    def test_changes_filename_attributes( self ):
+        self._add_filename_log_xml('beast')
+        xml = self._taxseqxml( 10 )
+        self._writexmlfile( xml, 'input.xml' )
+        self._C('input.xml', 2)
+
+        for f in ('split_1.xml','split_2.xml'):
+            with open(f) as fh:
+                contents = fh.read()
+                print contents
+                fn = splitext(f)[0]
+                print fn
+                ok_( 'fileName="'+fn in contents )
+                ok_( 'fileName="beast.' not in contents )
 
 class TestGetAllIDtaxaSeqtaxa(BaseXmlSplitter):
     functionname = 'get_all_idtaxa_seqtaxa'

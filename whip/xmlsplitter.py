@@ -4,6 +4,7 @@ from lxml import etree
 import re
 import argparse
 import sys
+from os.path import splitext, basename
 
 # Exception for invalid Beast xml
 class InvalidBeastXmlError(Exception): pass
@@ -66,11 +67,33 @@ def clear_align_taxa( xml ):
     remove_children( xml.xpath('alignment')[0] )
     remove_children( xml.xpath('taxa' )[0] )
 
+def set_filenames( xml, filename ):
+    '''
+    Sets the fileName options for any tags that have that attribute
+    by essentially replacing whatever the value is before the extension with filename
+    '''
+    # Get only filename portion of filename
+    filen = splitext(basename(filename))[0]
+
+    # Should find any tag with attribute named fileName
+    elements = xml.findall('.//*[@fileName]')
+
+    if not elements:
+        raise InvalidBeastXmlError(
+            'Input xml does not contain any fileName attributes'
+        )
+
+    for element in elements:
+        fn = splitext(basename(element.attrib['fileName']))[0]
+        # Replace the filename in existing path with our filename name
+        element.attrib['fileName'] = element.attrib['fileName'].replace(fn, filen)
+
 def set_dimensions( xml, seq_per_file ):
     '''
     Sets the dimensions parameter for any tags to the number of sequences
     per file
     '''
+    # Should find any parameter tag with attribute named dimension
     dimensions = xml.findall('.//parameter[@dimension]')
 
     # Loop through all found parameter tags with dimension in them
@@ -114,8 +137,10 @@ def split_xml( xmlfile, numfiles ):
         remove_children( xml.xpath('alignment')[0] )
         remove_children( xml.xpath('taxa' )[0] )
         for itaxa, staxa in chunk:
+            splitfile = 'split_{0}.xml'.format(i)
             xml.xpath('taxa')[0].append(itaxa)
             xml.xpath('alignment')[0].append(staxa)
             set_dimensions(xml, len(chunk))
-            with open('split_{0}.xml'.format(i),'w') as fh:
+            set_filenames(xml,splitfile)
+            with open(splitfile,'w') as fh:
                 xml.write(fh)
