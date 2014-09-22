@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 import multiprocessing
 import sys
 
+# Exception for invalid Beast xml
+class InvalidBeastXmlError(Exception): pass
+
 def run_beast_options( xmlfile, stream=sys.stdout, excludelist=[] ):
     '''
     Runs beast with a combination of available -beagle_options
@@ -24,6 +27,11 @@ def run_beast_options( xmlfile, stream=sys.stdout, excludelist=[] ):
     Returns a list of tuples (options run, estimated hours) sorted by estimated hours
         ascending
     '''
+    with open(xmlfile) as fh:
+        if 'screenLog' not in fh.read():
+            raise InvalidBeastXmlError(
+                '{0} does not contain a screenLog definition'.format(xmlfile)
+            )
     options = get_available_beagle_options()
     runs = []
     for option in options:

@@ -1,5 +1,10 @@
 from common import *
 
+from whip.beagleoptimiser import InvalidBeastXmlError
+
+class Base(BaseXml):
+    modulepath = 'whip.beagleoptimiser'
+
 class TestKwargsToOptions(BeastBase):
     def _C( self, *args, **kwargs ):
         from whip.beagleoptimiser import kwargs_to_options
@@ -141,6 +146,9 @@ class TestPrettyTime(object):
         eq_( 'INF', r )
 
 class BeagleOptions(object):
+    def setUp(self):
+        super(BeagleOptions,self).setUp()
+
     def _make_resource( self, *args, **kwargs ):
         ''' Produce a -beagle_info resource string '''
         fmt = "{index} : {name}\n"
@@ -320,24 +328,35 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
             r = self._C()
             eq_( sorted(expected_options), sorted(r) )
 
-class TestRunBeastOptions(BeagleOptions, BaseTempDir):
+class TestRunBeastOptions(BeagleOptions, BaseTempDir, Base):
+    functionname = 'run_beast_options'
+
     def setUp( self ):
         super(TestRunBeastOptions,self).setUp()
         from whip.beagleoptimiser import get_available_beagle_options
         self.avail_options = [
-            '-beagle_SSE',
-            '-beagle_SSE -beagle_instances 2',
-            '-beagle_SSE -beagle_instances 4',
-            '-beagle_SSE -beagle_instances 6',
             '-beagle_GPU',
             '-beagle_GPU -beagle_instances 2',
             '-beagle_GPU -beagle_instances 4',
             '-beagle_GPU -beagle_instances 6',
+            '-beagle_SSE',
+            '-beagle_SSE -beagle_instances 2',
+            '-beagle_SSE -beagle_instances 4',
+            '-beagle_SSE -beagle_instances 6',
         ]
 
-    def _C( self, *args, **kwargs ):
-        from whip.beagleoptimiser import run_beast_options
-        return run_beast_options( *args, **kwargs )
+    @attr('current')
+    @raises(InvalidBeastXmlError)
+    def test_ensures_screenlog_in_xml( self ):
+        self.xmlstr += '</beast>'
+        xmlpath = 'input.xml' 
+        self._writexmlfile( self.xmlstr, xmlpath )
+        stringstream = StringIO()
+        self._C(
+            xmlpath,
+            stream=stringstream,
+            excludelist=[]
+        )
 
     def test_excludelist_excludes_options( self ):
         with contextlib.nested(

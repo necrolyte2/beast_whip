@@ -1,66 +1,11 @@
-from lxml import etree
-
 from common import *
 
 from whip.xmlsplitter import InvalidBeastXmlError
 
-class BaseTester(MultipleInhBase):
-    def setUp(self):
-        super(BaseTester,self).setUp()
-
-    def _C( self, *args, **kwargs ):
-        '''
-        Trying this out to try and get rid of redundant code
-        '''
-        m = __import__( self.modulepath, fromlist=[self.functionname] )
-        return getattr(m,self.functionname)( *args, **kwargs )
-
-class BaseXmlSplitter(BaseTester):
+class Base(BaseXml):
     modulepath = 'whip.xmlsplitter'
-    def setUp( self ):
-        super(BaseXmlSplitter,self).setUp()
-        self.xmlstr = '<?xml version="1.0" standalone="yes"?>\n'
-        self.xmlstr += '<beast>\n'
 
-    def _taxseqxml( self, num ):
-        taxons = ['<taxon id="seq{0}"></taxon>'.format(i) for i in range(num)]
-        sequences = ['<sequence><taxon idref="seq{0}"/>ATGC</sequence>'.format(i) for i in range(num)]
-
-        self.xmlstr += '<taxa id="taxa">{0}</taxa>\n'.format(''.join(taxons))
-        self.xmlstr += '<alignment id="alignment" dataType="nucleotide">{0}</alignment>\n'.format(''.join(sequences))
-        self.xmlstr += '<parameter id="skyride.logPopSize" dimension="{0}" value="3.9512437185814275"/>\n'.format(num)
-        self.xmlstr += '<groupSizes><parameter id="skyride.groupSize" dimension="{0}"/></groupSizes>\n'.format(num)
-
-        return self._xml(self.xmlstr)
-
-    def _add_filename_log_xml( self, filename ):
-        self.xmlstr += '''
-            <log id="fileLog" logEvery="1000" fileName="{0}.log" overwrite="true">
-                <posterior idref="posterior"/>
-                <prior idref="prior"/>
-                <likelihood idref="likelihood"/>
-                <parameter idref="treeModel.rootHeight"/>
-                <parameter idref="constant.popSize"/>
-                <parameter idref="kappa"/>
-                <parameter idref="frequencies"/>
-                <parameter idref="clock.rate"/>
-                <treeLikelihood idref="treeLikelihood"/>
-                <coalescentLikelihood idref="coalescent"/>
-            </log>
-
-            <logTree id="treeFileLog" logEvery="1000" nexusFormat="true" fileName="{0}.trees" sortTranslationTable="true">
-                <treeModel idref="treeModel"/>
-                <strictClockBranchRates idref="branchRates"/>
-                <posterior idref="posterior"/>
-            </logTree>
-        '''.format(filename)
-
-    def _xml( self, xmlstr ):
-        xmlstr += '</beast>\n'
-        return etree.fromstring(xmlstr)
-
-@attr('current')
-class TestSetFilenames(BaseXmlSplitter):
+class TestSetFilenames(Base):
     functionname = 'set_filenames'
 
     @raises(InvalidBeastXmlError)
@@ -88,7 +33,7 @@ class TestSetFilenames(BaseXmlSplitter):
         ok_( 'with.me' in xmlstr )
         ok_( 'replace.me' not in xmlstr )
 
-class TestSetDimensions(BaseXmlSplitter):
+class TestSetDimensions(Base):
     functionname = 'set_dimensions'
     
     def test_xml_missing_dimensions( self ):
@@ -112,14 +57,11 @@ class TestSetDimensions(BaseXmlSplitter):
         ok_( 'dimension="1440"' not in xmlstr )
         ok_( 'dimension="4"' in xmlstr )
 
-class TestSplitXml(BaseXmlSplitter,BaseTempDir):
+class TestSplitXml(Base,BaseTempDir):
     functionname = 'split_xml'
 
-    def _writexmlfile( self, xml, xmlfilepath ):
-        with open(xmlfilepath,'w') as fh:
-            fh.write( etree.tostring(xml) )
-
     def test_splits_into_correct_amount_of_files( self ):
+        self._add_filename_log_xml('beast')
         xml = self._taxseqxml( 10 )
         self._writexmlfile( xml, 'input.xml' )
         self._C( 'input.xml', 2 )
@@ -140,6 +82,7 @@ class TestSplitXml(BaseXmlSplitter,BaseTempDir):
         eq_( 5, len(t2) )
 
     def test_changes_dimension_parameter( self ):
+        self._add_filename_log_xml('beast')
         xml = self._taxseqxml( 10 )
         self._writexmlfile( xml, 'input.xml' )
         self._C( 'input.xml', 2 )
@@ -151,7 +94,6 @@ class TestSplitXml(BaseXmlSplitter,BaseTempDir):
                 ok_( 'dimension="4"' in contents )
                 ok_( 'dimension="10"' not in contents )
 
-    @attr('current')
     def test_changes_filename_attributes( self ):
         self._add_filename_log_xml('beast')
         xml = self._taxseqxml( 10 )
@@ -167,7 +109,7 @@ class TestSplitXml(BaseXmlSplitter,BaseTempDir):
                 ok_( 'fileName="'+fn in contents )
                 ok_( 'fileName="beast.' not in contents )
 
-class TestGetAllIDtaxaSeqtaxa(BaseXmlSplitter):
+class TestGetAllIDtaxaSeqtaxa(Base):
     functionname = 'get_all_idtaxa_seqtaxa'
 
     @raises(InvalidBeastXmlError)
