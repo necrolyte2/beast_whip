@@ -132,7 +132,7 @@ Results sorted by estimated runtime:
 
 As each beagle option is run with beast it will output what option it is running. When the first hours/million states line is encountered beagle_optimiser will kill the beast process and use the chainLength from the given xml file and the hours/million states from the output to compute the estimated run time in #days HH:MM:SS.milliseconds
 
-## splitxml
+## splitxml(in development)
 
 Splits a beast xml file into N files. At this point each file will just be named split_N.xml, where N is replaced with 1-N.
 splitxml at this time will also find any <parameter...dimension="X"...> tags and replace the dimension="X" with how many taxon's are in each file - 1.
