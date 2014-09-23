@@ -131,11 +131,6 @@ def estimate_beast_runtime( xmlfile, seed=999, stream=sys.stdout, **beast_option
     Then terminate beast and calculate how long it would take to run based 
     on the iterations in the xml file
 
-    Requires that there is a screenLog entry in the xml although it is not
-    checked for :(
-    TODO:
-        Check for screenLog entry in xmlfile
-
     xmlfile - Input xml file to run beast on
     seed - Seed to set so all runs are the same
     beast_options is a kwargs set that you can specify any beast options
