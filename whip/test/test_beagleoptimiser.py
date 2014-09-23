@@ -31,10 +31,8 @@ class TestKwargsToOptions(BeastBase):
         ]
         eq_( e, r )
 
-class TestEstimateBeastRuntime(BaseTempDir):
-    def _C( self, *args, **kwargs ):
-        from whip.beagleoptimiser import estimate_beast_runtime
-        return estimate_beast_runtime( *args, **kwargs )
+class TestEstimateBeastRuntime(Base,BaseTempDir):
+    functionname = 'estimate_beast_runtime'
 
     def test_waits_for_hours_million_line( self ):
         with patch( 'whip.beagleoptimiser.Popen',
@@ -67,6 +65,35 @@ class TestEstimateBeastRuntime(BaseTempDir):
         print rpath
         r = self._C( rpath )
         ok_( r is not None )
+
+    @attr('current')
+    def test_raises_value_error_when_no_hours_per_million_found( self ):
+        sout = StringIO()
+        # Write new beast xml file with small chainLength
+        with open(self.beastfiles[0]) as ifh:
+            with open('input.xml','w') as ofh:
+                for line in ifh:
+                    if 'chainLength' in line:
+                        ofh.write( line.replace('100000','10000') )
+                    else:
+                        ofh.write( line )
+        try:
+            self._C( 'input.xml', stream=sout )
+            ok_( False, 'Did not raise ValueError' )
+        except ValueError as e:
+            contents = sout.getvalue()
+            ok_( 'Beast did not exit correctly' not in contents )
+
+    @attr('current')
+    def test_outputs_error_message_and_raises_error( self ):
+        sout = StringIO()
+        # Make a bad xml file to make beast break
+        open('input.xml','w').close()
+        try:
+            self._C( 'input.xml', stream=sout )
+        except ValueError as e:
+            contents = sout.getvalue()
+            ok_( 'Beast did not exit correctly' in contents )
 
 class TestGetChainLength(BeastBase):
     def _C( self, *args, **kwargs ):
@@ -292,7 +319,6 @@ class BeagleOptions(Base):
             inst.append( '{0} -beagle_instances {1}'.format(baseoption, i) )
         return inst
 
-@attr('current')
 @patch('whip.beagleoptimiser.multiprocessing')
 class TestGetAvailableBeagleOptions(BeagleOptions):
     functionname = 'get_available_beagle_options'
@@ -347,7 +373,6 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
             r = self._C()
             eq_( expected_options, r )
 
-@attr('current')
 class TestGetGPUOptions(BeagleOptions,Base):
     functionname = 'get_gpu_options'
 
@@ -419,7 +444,6 @@ class TestGetGPUOptions(BeagleOptions,Base):
         print r
         eq_( expected, r )
 
-@attr('current')
 class TestRunBeastOptions(BeagleOptions, BaseTempDir, Base):
     functionname = 'run_beast_options'
 
@@ -474,12 +498,55 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir, Base):
             # Ensure only not excluded option is still there
             ok_( '-beagle_SSE' in output )
 
+    def test_time_take_to_generate_each_test_in_output( self ):
+        from whip.beagleoptimiser import pretty_time
+        with contextlib.nested(
+                patch('whip.beagleoptimiser.get_available_beagle_options'),
+                patch('whip.beagleoptimiser.estimate_beast_runtime'),
+                patch('whip.beagleoptimiser.time'),
+            ) as (p1, p2, p3):
+            times = [random.random() for i in range(len(self.avail_options))]
+            # Have to generate start and end
+            gentimes = [i*i for i in range(len(self.avail_options)*2)]
+            # Patch in avail options
+            p1.return_value = self.avail_options
+            # Patch in estimated times
+            p2.side_effect = times
+            # Patch in beast run times
+            p3.time.side_effect = gentimes
+
+            stringstream = StringIO()
+            self._C( self.beastfiles[0], stream=stringstream )
+
+            output = stringstream.getvalue()
+
+            # We are only interested in estimate lines
+            estlines = []
+            for line in output.splitlines():
+                if 'estimate:' in line:
+                    estlines.append(line)
+
+            # Now calculate all the time differences in gentimes
+            gentimesdiff = []
+            for i in range(0,len(gentimes),2):
+                diff = (gentimes[i+1] - gentimes[i]) / 3600.0
+                gentimesdiff.append(diff)
+
+            # Pack up all the inputs with the actual output line
+            # and then compare
+            for esttime, option, gentime, outline in zip(
+                    times, self.avail_options, gentimesdiff, estlines):
+                expected = '{0} estimate: {1} (Time to generate: {2})'.format(
+                    option, pretty_time(esttime), pretty_time(gentime)
+                )
+                eq_( expected, outline )
+
     def test_sends_to_correct_output_stream( self ):
         with contextlib.nested(
                 patch('whip.beagleoptimiser.get_available_beagle_options'),
                 patch('whip.beagleoptimiser.estimate_beast_runtime'),
             ) as (p1, p2):
-            times = [random.random() for i in range(8)]
+            times = [random.random() for i in range(len(self.avail_options))]
             p1.return_value = self.avail_options
             p2.side_effect = times
             stringstream = StringIO()

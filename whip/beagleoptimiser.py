@@ -8,6 +8,7 @@ import itertools
 from datetime import datetime, timedelta
 import multiprocessing
 import sys
+import time
 
 # Exception for invalid Beast xml
 class InvalidBeastXmlError(Exception): pass
@@ -24,7 +25,7 @@ def run_beast_options( xmlfile, stream=sys.stdout, excludelist=[] ):
     -beagle_order at this point is left out due to the increase in run time that
     would occur due to the extra permutations
 
-    Returns a list of tuples (options run, estimated hours) sorted by estimated hours
+    Returns a list of tuples (options run, estimated hours, time to generate in seconds) sorted by estimated hours
         ascending
     '''
     with open(xmlfile) as fh:
@@ -47,6 +48,7 @@ def run_beast_options( xmlfile, stream=sys.stdout, excludelist=[] ):
         for o in option.split(' ', 1):
             beast_options[o] = True
         print "Running beast with {0}".format(option)
+        start = time.time()
         try:
             esthours = estimate_beast_runtime(
                 xmlfile, seed=999, stream=stream, **beast_options
@@ -54,7 +56,9 @@ def run_beast_options( xmlfile, stream=sys.stdout, excludelist=[] ):
         except ValueError as e:
             # Just set estimated hours really high to indicate an error
             esthours = sys.maxint
-        msg = '{0} estimate: {1}'.format(option, pretty_time(esthours))
+        diff = (time.time() - start) / 3600.0
+        msg = '{0} estimate: {1} (Time to generate: {2})'.format(
+            option, pretty_time(esthours), pretty_time(diff))
         stream.write( msg + '\n' )
         print msg
         runs.append( (option, esthours) )
@@ -135,7 +139,10 @@ def estimate_beast_runtime( xmlfile, seed=999, stream=sys.stdout, **beast_option
     seed - Seed to set so all runs are the same
     beast_options is a kwargs set that you can specify any beast options
     '''
+    # Need the absolute path to the xml file since we enter a temp
+    #  directory and reference the file from there
     xmlfile = abspath( xmlfile )
+    # Build Beast options to run
     cmd = ['beast', '-overwrite', '-seed {0}'.format(seed)]
     cmd += kwargs_to_options( **beast_options )
     cmd += [xmlfile]
@@ -158,10 +165,12 @@ def estimate_beast_runtime( xmlfile, seed=999, stream=sys.stdout, **beast_option
             break
     # Make sure we actually got what we were looking for
     if hours_per_million is None:
-        stream.write( '!!!!!!!!!!!! Beast did not exit correctly !!!!!!!!!!!!!!!!!!\n' )
-        stream.write( 'Here is the remaining output:\n' )
-        stream.write( p.stderr.read() )
-        stream.write( '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n' )
+        p.wait()
+        if p.returncode != 0:
+            stream.write( '!!!!!!!!!!!! Beast did not exit correctly !!!!!!!!!!!!!!!!!!\n' )
+            stream.write( 'Here is the remaining output:\n' )
+            stream.write( p.stderr.read() )
+            stream.write( '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n' )
         # Ensure beast is dead
         if p.poll() is None:
             p.kill()
