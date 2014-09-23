@@ -134,6 +134,8 @@ As each beagle option is run with beast it will output what option it is running
 
 ## splitxml(in development)
 
+The original concept of this is being re-worked as you cannot just pull out a subset of sequences and run them separately. You may be able to run a subset of the chainLength and parallelize that way though. That is being investigated now.
+
 Splits a beast xml file into N files. At this point each file will just be named split_N.xml, where N is replaced with 1-N.
 splitxml at this time will also find any <parameter...dimension="X"...> tags and replace the dimension="X" with how many taxon's are in each file - 1.
 I don't know why there are length(taxon)-1, but it is what it is.
@@ -249,8 +251,5 @@ A good example/tutorial is to use the benchmark1.xml file that comes with beast.
 
 ## TODO:
 
-- beagle_optimiser: Somehow also include -beagle_order when there are 2 GPU
-- beagle_optimiser: Output options that will be run so people can see in case they want to exclude some
 - beagle_optimiser: Put time taken to generate the estimate beside each estimate
-- xmlsplit.py: Be able to specify the prefix of output files or default to the original name
-- xmlsplit.py: Needs to change all of the log file names in each file as well so they can be merged together
+- beagle_optimiser: Output options that will be run so people can see in case they want to exclude some
