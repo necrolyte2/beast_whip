@@ -75,29 +75,55 @@ def get_available_beagle_options( ):
     sout,serr = p.communicate()
     resourcelist = sout.rstrip().partition( 'BEAGLE resources available:\n' )[2]
     resourcelist = resourcelist.split('\n\n\n')
-    options = set()
+    options = []
 
     instances = []
     for i in range(2, multiprocessing.cpu_count()+1, 2):
         instances.append( '-beagle_instances {0}'.format(i) )
 
+    # At some point probably should make another function for CPU resources
+    # like how get_gpu_options was done
     for resource in resourcelist:
         if 'CPU' in resource and '-beagle_SSE' not in options:
-            options.add( '-beagle_CPU' )
+            options.append( '-beagle_CPU' )
             for inst in instances:
-                options.add( '-beagle_CPU ' + inst )
+                options.append( '-beagle_CPU ' + inst )
         if 'VECTOR_SSE' in resource:
-            options.add( '-beagle_SSE' )
+            options.append( '-beagle_SSE' )
             for inst in instances:
-                options.add( '-beagle_SSE ' + inst )
-                options.discard( '-beagle_CPU ' + inst )
-            options.discard( '-beagle_CPU' )
-        if 'GPU' in resource:
-            options.add( '-beagle_GPU' )
-            for inst in instances:
-                options.add( '-beagle_GPU ' + inst )
+                options.append( '-beagle_SSE ' + inst )
+                options.remove( '-beagle_CPU ' + inst )
+            options.remove( '-beagle_CPU' )
 
-    return list(options)
+    # Put GPU before CPU since that is correct ordering
+    options = get_gpu_options(resourcelist) + options
+
+    return options
+
+def get_gpu_options( resourcelist ):
+    '''
+    Get a list of GPU options from resourcelist
+    '''
+    options = []
+    gpu_indexes = []
+    for resource in resourcelist:
+        if 'GPU' in resource:
+            i = int(resource.split('\n')[0].split(':')[0].strip())
+            gpu_indexes.append( i )
+            options.append( '-beagle_GPU -beagle_order {0}'.format(i) )
+    # If there is only one gpu, then there is only one option
+    if len(gpu_indexes) == 1:
+        return ['-beagle_GPU']
+    # If there are no GPU's return null list
+    if len(gpu_indexes) == 0:
+        return []
+
+    # Generate instances up to max gpu count
+    for i in gpu_indexes:
+        if i%2 == 0:
+            options.append( '-beagle_GPU -beagle_instances {0}'.format(i) )
+
+    return options
 
 def estimate_beast_runtime( xmlfile, seed=999, stream=sys.stdout, **beast_options ):
     '''

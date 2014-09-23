@@ -110,7 +110,6 @@ class TestGetHoursPerMillion(BeastBase):
         r = self._C( line.format(1.5) )
         eq_( 1.5 / 1000, r )
 
-@attr('current')
 class TestPrettyTime(object):
     def _C( self, *args, **kwargs ):
         from whip.beagleoptimiser import pretty_time
@@ -145,9 +144,61 @@ class TestPrettyTime(object):
         r = self._C( sys.maxint )
         eq_( 'INF', r )
 
-class BeagleOptions(object):
+class BeagleOptions(Base):
     def setUp(self):
         super(BeagleOptions,self).setUp()
+        self.resources = []
+        self.resources.append(
+            self._make_resource(
+                index=0,
+                name='CPU',
+                flags={
+                    'vector_sse': True,
+                    'processor': 'PROCESSOR_CPU',
+                    'framework': 'FRAMEWORK_CPU'
+                }
+            )
+        )
+        self.resources.append(
+            self._make_resource(
+                index=1,
+                name='Graphics card',
+                memory=1024,
+                corecount=192,
+                clockspeed=1.2,
+                flags={
+                    'processor': 'PROCESSOR_GPU',
+                    'framework': 'FRAMEWORK_CUDA'
+                }
+            )
+        )
+        self.resources.append(
+            self._make_resource(
+                index=2,
+                name='Graphics card 2',
+                memory=1024,
+                corecount=192,
+                clockspeed=1.2,
+                flags={
+                    'processor': 'PROCESSOR_GPU',
+                    'framework': 'FRAMEWORK_CUDA'
+                }
+            )
+        )
+        self.resources.append(
+            self._make_resource(
+                index=3,
+                name='Graphics card 3',
+                memory=1024,
+                corecount=192,
+                clockspeed=1.2,
+                flags={
+                    'processor': 'PROCESSOR_GPU',
+                    'framework': 'FRAMEWORK_CUDA'
+                }
+            )
+        )
+
 
     def _make_resource( self, *args, **kwargs ):
         ''' Produce a -beagle_info resource string '''
@@ -184,7 +235,7 @@ class BeagleOptions(object):
             'VECTOR_NONE THREADING_NONE {processor} {framework}'
         return flags_str.format( **flags )
 
-    def test_creates_correct_cpu_resource_string( self ):
+    def _test_creates_correct_cpu_resource_string( self ):
         r = self._make_resource(
             index=0,
             name='CPU',
@@ -202,7 +253,7 @@ class BeagleOptions(object):
 '''
         eq_( cpu_resource, r )
 
-    def test_creates_correct_gpu_resource_string( self ):
+    def _test_creates_correct_gpu_resource_string( self ):
         r = self._make_resource(
             index=1,
             name='Tesla C2075',
@@ -235,67 +286,29 @@ class BeagleOptions(object):
         beagle_info.communicate.return_value = (str,'')
         return Mock(return_value=beagle_info)
 
-    def _expected_beagle_instances( self, baseoption ):
+    def _expected_beagle_instances( self, baseoption, instances=multiprocessing.cpu_count() ):
         inst = []
-        for i in range(2, multiprocessing.cpu_count()+1, 2):
+        for i in range(2, instances+1, 2):
             inst.append( '{0} -beagle_instances {1}'.format(baseoption, i) )
         return inst
 
+@attr('current')
+@patch('whip.beagleoptimiser.multiprocessing')
 class TestGetAvailableBeagleOptions(BeagleOptions):
-    def setUp(self):
-        self.resources = []
-        self.resources.append(
-            self._make_resource(
-                index=0,
-                name='CPU',
-                flags={
-                    'vector_sse': True,
-                    'processor': 'PROCESSOR_CPU',
-                    'framework': 'FRAMEWORK_CPU'
-                }
-            )
-        )
-        self.resources.append(
-            self._make_resource(
-                index=1,
-                name='Graphics card',
-                memory=1024,
-                corecount=192,
-                clockspeed=1.2,
-                flags={
-                    'processor': 'PROCESSOR_GPU',
-                    'framework': 'FRAMEWORK_CUDA'
-                }
-            )
-        )
-        self.resources.append(
-            self._make_resource(
-                index=1,
-                name='Graphics card 2',
-                memory=1024,
-                corecount=192,
-                clockspeed=1.2,
-                flags={
-                    'processor': 'PROCESSOR_GPU',
-                    'framework': 'FRAMEWORK_CUDA'
-                }
-            )
-        )
+    functionname = 'get_available_beagle_options'
 
-    def _C( self, *args, **kwargs ):
-        from whip.beagleoptimiser import get_available_beagle_options
-        return get_available_beagle_options( *args, **kwargs )
-
-    def test_gets_beaglesse_for_vector_sse( self ):
+    def test_gets_beaglesse_for_vector_sse( self, cpucount ):
+        cpucount.cpu_count.return_value = 8
         expected_options = [
             '-beagle_SSE',
         ] + self._expected_beagle_instances('-beagle_SSE')
         resource = self._mock_beagle_info( self.resources[0] )
         with patch('whip.beagleoptimiser.Popen', resource):
             r = self._C()
-            eq_( sorted(expected_options), sorted(r) )
+            eq_( sorted(expected_options), r )
 
-    def test_gets_correct_gpu_options( self ):
+    def test_gets_correct_gpu_options( self, cpucount ):
+        cpucount.cpu_count.return_value = 8
         resource = self._make_resource(
             index=0,
             name='Graphics card',
@@ -307,45 +320,122 @@ class TestGetAvailableBeagleOptions(BeagleOptions):
                 'framework': 'FRAMEWORK_CUDA'
             }
         )
+        cpus = multiprocessing.cpu_count()
+        # Only 1 GPU
         expected_options = [
             '-beagle_GPU',
-        ] + self._expected_beagle_instances('-beagle_GPU')
+        ]
         resource = self._mock_beagle_info( self.resources[1] )
         with patch('whip.beagleoptimiser.Popen', resource):
             r = self._C()
-            eq_( sorted(expected_options), sorted(r) )
+            eq_( sorted(expected_options), r )
 
-    def test_gets_correct_cpu_and_gpu_options( self ):
+    def test_gets_correct_cpu_and_gpu_options( self, cpucount ):
+        cpucount.cpu_count.return_value = 24
         expected_options = [
+            '-beagle_GPU -beagle_order 1',
+            '-beagle_GPU -beagle_order 2',
+            '-beagle_GPU -beagle_instances 2',
             '-beagle_SSE',
-            '-beagle_GPU',
-        ] + self._expected_beagle_instances('-beagle_SSE') \
-          + self._expected_beagle_instances('-beagle_GPU')
+        ] + self._expected_beagle_instances('-beagle_SSE', 24)
+
         resource = self._mock_beagle_info(
             self.resources[0] + self.resources[1] + self.resources[2]
         )
+
         with patch('whip.beagleoptimiser.Popen', resource):
             r = self._C()
-            eq_( sorted(expected_options), sorted(r) )
+            eq_( expected_options, r )
 
+@attr('current')
+class TestGetGPUOptions(BeagleOptions,Base):
+    functionname = 'get_gpu_options'
+
+    def test_gets_zero_gpu( self ):
+        expected = [
+        ]
+        r = self._C( self.resources[0:1] )
+        eq_( expected, r )
+
+    def test_gets_one_gpu( self ):
+        expected = [
+            '-beagle_GPU'
+        ]
+        r = self._C( self.resources[1:2] )
+        eq_( expected, r )
+
+    def test_gets_two_gpu( self ):
+        expected = [
+            '-beagle_GPU -beagle_order 2',
+            '-beagle_GPU -beagle_order 3',
+            '-beagle_GPU -beagle_instances 2',
+        ]
+        r = self._C( self.resources[2:] )
+        eq_( expected, r )
+
+    def test_gets_three_gpu( self ):
+        expected = [
+            '-beagle_GPU -beagle_order 1',
+            '-beagle_GPU -beagle_order 2',
+            '-beagle_GPU -beagle_order 3',
+            '-beagle_GPU -beagle_instances 2',
+        ]
+        r = self._C( self.resources[1:] )
+        eq_( expected, r )
+
+    def test_gets_10_gpu( self ):
+        resources = [self.resources[0]]
+        for i in range(1,11):
+            r = self._make_resource(
+                index=i,
+                name='Graphics Card {0}'.format(i),
+                memory=i*1024,
+                corecount=i*192,
+                clockspeed=i*1.1,
+                flags={
+                    'processor': 'PROCESSOR_GPU',
+                    'framework': 'FRAMEWORK_CUDA'
+                }
+            )
+            resources.append( r )
+        r = self._C( resources )
+        expected = [
+            '-beagle_GPU -beagle_order 1',
+            '-beagle_GPU -beagle_order 2',
+            '-beagle_GPU -beagle_order 3',
+            '-beagle_GPU -beagle_order 4',
+            '-beagle_GPU -beagle_order 5',
+            '-beagle_GPU -beagle_order 6',
+            '-beagle_GPU -beagle_order 7',
+            '-beagle_GPU -beagle_order 8',
+            '-beagle_GPU -beagle_order 9',
+            '-beagle_GPU -beagle_order 10',
+            '-beagle_GPU -beagle_instances 2',
+            '-beagle_GPU -beagle_instances 4',
+            '-beagle_GPU -beagle_instances 6',
+            '-beagle_GPU -beagle_instances 8',
+            '-beagle_GPU -beagle_instances 10',
+        ]
+        print r
+        eq_( expected, r )
+
+@attr('current')
 class TestRunBeastOptions(BeagleOptions, BaseTempDir, Base):
     functionname = 'run_beast_options'
 
     def setUp( self ):
         super(TestRunBeastOptions,self).setUp()
-        from whip.beagleoptimiser import get_available_beagle_options
+        #from whip.beagleoptimiser import get_available_beagle_options
         self.avail_options = [
-            '-beagle_GPU',
+            '-beagle_GPU -beagle_order 1',
+            '-beagle_GPU -beagle_order 2',
             '-beagle_GPU -beagle_instances 2',
-            '-beagle_GPU -beagle_instances 4',
-            '-beagle_GPU -beagle_instances 6',
             '-beagle_SSE',
             '-beagle_SSE -beagle_instances 2',
             '-beagle_SSE -beagle_instances 4',
             '-beagle_SSE -beagle_instances 6',
         ]
 
-    @attr('current')
     @raises(InvalidBeastXmlError)
     def test_ensures_screenlog_in_xml( self ):
         self.xmlstr += '</beast>'
@@ -363,7 +453,8 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir, Base):
                 patch('whip.beagleoptimiser.get_available_beagle_options'),
                 patch('whip.beagleoptimiser.estimate_beast_runtime'),
             ) as (p1, p2):
-            times = [random.random() for i in range(8)]
+            # Patch in our available options with random runtimes
+            times = [random.random() for i in range(len(self.avail_options))]
             p1.return_value = self.avail_options
             p2.side_effect = times
             stringstream = StringIO()
@@ -371,12 +462,17 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir, Base):
             self._C(
                 self.beastfiles[0],
                 stream=stringstream,
-                excludelist=['-beagle_GPU','-beagle_CPU -beagle_instances']
+                excludelist=['-beagle_GPU','-beagle_SSE -beagle_instances']
             )
 
             output = stringstream.getvalue()
+            # Ensure that all excluded options are gone
             ok_( '-beagle_GPU -beagle_instances 2' not in output )
-            ok_( '-beagle_CPU -beagle_instances' not in output )
+            ok_( '-beagle_GPU -beagle_order 1' not in output )
+            ok_( '-beagle_GPU -beagle_order 2' not in output )
+            ok_( '-beagle_SSE -beagle_instances' not in output )
+            # Ensure only not excluded option is still there
+            ok_( '-beagle_SSE' in output )
 
     def test_sends_to_correct_output_stream( self ):
         with contextlib.nested(
@@ -398,12 +494,17 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir, Base):
                 patch('whip.beagleoptimiser.get_available_beagle_options'),
                 patch('whip.beagleoptimiser.estimate_beast_runtime')
             ) as (p1, p2):
-            times = [random.random() for i in range(8)]
+            # Assign random times between 0-1 for each available option
+            times = [random.random() for i in range(len(self.avail_options))]
             p1.return_value = self.avail_options
             p2.side_effect = times
             
+            # Run the test
             r = self._C( self.beastfiles[0] )
+            
+            # Zip up randomtime,availoption
             expected = zip( self.avail_options, times )
+            # Sort the zipped list by times
             expected.sort( key=lambda x: x[1] )
             eq_( expected, r )
 
@@ -412,7 +513,7 @@ class TestRunBeastOptions(BeagleOptions, BaseTempDir, Base):
                 patch('whip.beagleoptimiser.get_available_beagle_options'),
                 patch('whip.beagleoptimiser.estimate_beast_runtime')
             ) as (p1, p2):
-            times = [random.random() for i in range(8)]
+            times = [random.random() for i in range(len(self.avail_options))]
             p1.return_value = self.avail_options
             times[4] = ValueError
             p2.side_effect = times

@@ -169,7 +169,7 @@ split_9.xml: 145
 
 ## TODO:
 
-- beagle_optimiser: Output options that will be run so people can see in case they want to exclude some
 - beagle_optimiser: Somehow also include -beagle_order when there are 2 GPU
+- beagle_optimiser: Output options that will be run so people can see in case they want to exclude some
 - beagle_optimiser: Put time taken to generate the estimate beside each estimate
 - xmlsplit.py: Be able to specify the prefix of output files or default to the original name
