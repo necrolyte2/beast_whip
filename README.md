@@ -192,22 +192,23 @@ A good example/tutorial is to use the benchmark1.xml file that comes with beast.
   ```
   beagle_optimiser benchmark1.xml
   Running beast with -beagle_SSE
-  -beagle_SSE estimate: 00:02:42.0
+  -beagle_SSE estimate: 00:01:22.800000 (Time to generate: 00:01:29.180686)
   Running beast with -beagle_SSE -beagle_instances 2
-  -beagle_SSE -beagle_instances 2 estimate: 00:02:27.600000
+  -beagle_SSE -beagle_instances 2 estimate: 00:01:13.800000 (Time to generate: 00:01:20.61046)
   Running beast with -beagle_SSE -beagle_instances 4
-  -beagle_SSE -beagle_instances 4 estimate: 00:02:27.600000
+  -beagle_SSE -beagle_instances 4 estimate: 00:01:13.800000 (Time to generate: 00:01:02.846145)
   Running beast with -beagle_SSE -beagle_instances 6
-  -beagle_SSE -beagle_instances 6 estimate: INF
+  -beagle_SSE -beagle_instances 6 estimate: 00:01:15.600000 (Time to generate: 00:01:25.660735)
   Running beast with -beagle_SSE -beagle_instances 8
-  -beagle_SSE -beagle_instances 8 estimate: 00:03:14.400000
+  None
+  -beagle_SSE -beagle_instances 8 estimate: INF (Time to generate: 00:00:01.599601)
   
   Results sorted by estimated runtime:
-	-beagle_SSE -beagle_instances 2 estimated to take 00:02:27.600000
-	-beagle_SSE -beagle_instances 4 estimated to take 00:02:27.600000
-	-beagle_SSE estimated to take 00:02:42.0
-	-beagle_SSE -beagle_instances 8 estimated to take 00:03:14.400000
-	-beagle_SSE -beagle_instances 6 estimated to take INF
+      -beagle_SSE -beagle_instances 2 estimated to take 00:01:13.800000
+      -beagle_SSE -beagle_instances 4 estimated to take 00:01:13.800000
+      -beagle_SSE -beagle_instances 6 estimated to take 00:01:15.600000
+      -beagle_SSE estimated to take 00:01:22.800000
+      -beagle_SSE -beagle_instances 8 estimated to take INF
   ```
   
   You can see that the -beagle_SSE -beagle_instances 2 was the fastest runtime so we will use it.
@@ -251,5 +252,4 @@ A good example/tutorial is to use the benchmark1.xml file that comes with beast.
 
 ## TODO:
 
-- beagle_optimiser: Put time taken to generate the estimate beside each estimate
 - beagle_optimiser: Output options that will be run so people can see in case they want to exclude some
