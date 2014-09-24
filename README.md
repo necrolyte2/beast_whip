@@ -107,6 +107,44 @@ beagle_optimiser whip/test/beast.xml --exclude \
 beagle_optimiser whip/test/beast.xml --exclude {4,6}
 ```
 
+##### Quotes
+
+It is very important that options that have more than 1 argument are enclosed in quotes otherwise they will be interpreted as 2 different exludes.
+
+Example:
+
+```
+--exclude beagle_order 1
+```
+
+Will exclude all beagle_order options as well as any option that has 1 in it
+
+```
+--exclude 'beagle_order 1'
+```
+
+Will exclude only the beagle_order 1 option
+
+##### Don't include the dash before an option you want to exclude
+
+Including a dash before an exclude option essentially will make beagle_optimiser think you are passing another option on to it instead of specifying a string for the --exclude argument.
+
+You shouldn't need to specify the dash for an exclude option anyways since you can just specify the option name
+
+Example:
+
+This will not work!
+
+```
+beagle_optimiser whip/test/beast.xml --exclude -beagle_SSE
+```
+
+This will work
+
+```
+beagle_optimiser whip/test/beast.xml --exclude beagle_SSE
+```
+
 ### Output from beagle_optmiser
 
 ```
