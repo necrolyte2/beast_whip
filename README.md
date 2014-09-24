@@ -24,6 +24,12 @@ On Red Hat you can install them via:
 su -c "yum install libxml2-devel libxslt-devel"
 ```
 
+On Ubuntu you can install them via:
+
+```
+sudo apt-get install libxml2-dev libxslt-dev
+```
+
 ## Install
 
 It is highly suggested that you install into a virtualenv environment
