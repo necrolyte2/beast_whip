@@ -15,20 +15,27 @@ the run and then the results can be combined later using [LogCombiner](http://be
 ## Requirements
 
 All of the python packages should be mostly taken care of during the setup.py install.
-lxml does require that the libxml-devel and libxslt-devel packages for your distribution are installed though
-as they are required for compiling the python-c modules.
 
-On Red Hat you can install them via:
+You will have to ensure that the following are installed though
 
-```
-su -c "yum install libxml2-devel libxslt-devel"
-```
+- [beagle-lib](https://code.google.com/p/beagle-lib/wiki/LinuxInstallInstructions)
+- [beast](http://beast.bio.ed.ac.uk/)
+- libxml and libxslt developmental libraries
 
-On Ubuntu you can install them via:
+  lxml does require that the libxml-devel and libxslt-devel packages for your distribution are installed though
+  as they are required for compiling the python-c modules.
 
-```
-sudo apt-get install libxml2-dev libxslt-dev
-```
+  On Red Hat you can install them via:
+
+  ```
+  su -c "yum install libxml2-devel libxslt-devel"
+  ```
+
+  On Ubuntu you can install them via:
+
+  ```
+  sudo apt-get install libxml2-dev libxslt-dev
+  ```
 
 ## Install
 
