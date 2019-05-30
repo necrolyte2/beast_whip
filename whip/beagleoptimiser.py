@@ -77,7 +77,10 @@ def get_available_beagle_options( ):
     cmd = ['beast', '-beagle_info']
     p = Popen(cmd, stdout=PIPE)
     sout,serr = p.communicate()
-    resourcelist = sout.rstrip().partition( 'BEAGLE resources available:\n' )[2]
+    if 'BEAGLE resources available' in sout:
+      resourcelist = sout.rstrip().partition( 'BEAGLE resources available:\n' )[2]
+    else:
+      resourcelist = sout.rstrip().partition( '--- BEAGLE RESOURCES ---\n' )[2]
     resourcelist = resourcelist.split('\n\n\n')
     options = []
 

@@ -16,10 +16,31 @@ the run and then the results can be combined later using [LogCombiner](http://be
 
 All of the python packages should be mostly taken care of during the setup.py install.
 
-You will have to ensure that the following are installed though
+You will have to ensure that the following are installed:
+
+- [NVIDIA Cuda](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1810&target_type=debnetwork)
 
 - [beagle-lib](https://code.google.com/p/beagle-lib/wiki/LinuxInstallInstructions)
+
+  ```
+  export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib/cuda/lib64:/usr/local/lib/cuda-10.1/lib64
+  ./autogen.sh && ./configure --prefix=/usr && sudo make install
+  ```
+
+  *Note*: You will need to ensure that `export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib/cuda/lib64:/usr/local/lib/cuda-10.1/lib64` 
+  is setup every time you open a new terminal.
+
+  You can add it to your `.bashrc` file so it adds it every time
+
 - [beast](http://beast.bio.ed.ac.uk/)
+
+  ```
+  curl -L https://github.com/beast-dev/beast-mcmc/releases/download/v1.10.4/BEASTv1.10.4.tgz | tar xzvf - && sudo mv BEASTv1.10.4 /opt/beast
+  ```
+  Then just ensure you have `/opt/beast/bin` in your `PATH`
+
+  `export PATH=$PATH:/opt/beast/bin`
+
 - libxml and libxslt developmental libraries
 
   lxml does require that the libxml-devel and libxslt-devel packages for your distribution are installed though
